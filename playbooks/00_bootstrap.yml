@@ -21,15 +21,15 @@
 
     - name: Create .ssh directory for user
       ansible.builtin.file:
-        path: "/home/msm/.ssh"
+        path: "/home/bakalauras/.ssh"
         state: directory
         mode: "0700"
-        owner: msm
-        group: msm
+        owner: bakalauras
+        group: bakalauras
 
     - name: Copy ansible public key to authorized_keys
       ansible.posix.authorized_key:
-        user: msm
+        user: bakalauaras
         state: present
         key: "{{ lookup('file', '~/.ssh/ansible_id.pub') }}"
 
