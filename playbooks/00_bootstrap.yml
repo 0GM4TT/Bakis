@@ -1,0 +1,190 @@
+# 00_bootstrap.yml
+# Run once with: ansible-playbook playbooks/00_bootstrap.yml --ask-pass --ask-pass (enter password twice)
+# After this playbook, all further playbooks run passwordlessly via SSH key
+
+- name: Bootstrap Pi nodes
+  hosts: cluster
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: Wait for nodes to be reachable
+      ansible.builtin.wait_for_connection:
+        timeout: 30
+
+    - name: Gather facts
+      ansible.builtin.setup:
+
+    # -------------------------
+    # SSH Key Distribution
+    # -------------------------
+
+    - name: Create .ssh directory for user
+      ansible.builtin.file:
+        path: "/home/msm/.ssh"
+        state: directory
+        mode: "0700"
+        owner: msm
+        group: msm
+
+    - name: Copy ansible public key to authorized_keys
+      ansible.posix.authorized_key:
+        user: msm
+        state: present
+        key: "{{ lookup('file', '~/.ssh/ansible_id.pub') }}"
+
+    - name: Disable SSH password authentication
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?PasswordAuthentication"
+        line: "PasswordAuthentication no"
+        state: present
+      notify: Restart SSH
+
+    - name: Disable root SSH login
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^#?PermitRootLogin"
+        line: "PermitRootLogin no"
+        state: present
+      notify: Restart SSH
+
+    # -------------------------
+    # Configure passwordless sudo
+    # -------------------------  
+
+    - name: Configure passwordless sudo for ansible user
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers.d/ansible
+        line: "{{ ansible_user }} ALL=(ALL) NOPASSWD: ALL"
+        create: true
+        mode: '0440'
+        validate: 'visudo -cf %s'
+
+    # -------------------------
+    # Hostname Assignment
+    # -------------------------
+
+    - name: Set hostname
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname }}"
+
+    # -------------------------
+    # System Updates
+    # -------------------------
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Upgrade all packages
+      ansible.builtin.apt:
+        upgrade: full
+
+    # -------------------------
+    # Disable Swap
+    # -------------------------
+
+    - name: Disable swap immediately
+      ansible.builtin.command: swapoff -a
+      changed_when: false
+
+    - name: Check if dphys-swapfile exists
+      ansible.builtin.stat:
+        path: /etc/dphys-swapfile
+      register: dphys_swapfile
+
+    - name: Disable swap permanently in /etc/dphys-swapfile
+      ansible.builtin.lineinfile:
+        path: /etc/dphys-swapfile
+        regexp: "^CONF_SWAPSIZE"
+        line: "CONF_SWAPSIZE=0"
+      when: dphys_swapfile.stat.exists
+
+    - name: Disable dphys-swapfile service
+      ansible.builtin.systemd:
+        name: dphys-swapfile
+        enabled: false
+        state: stopped
+      when: dphys_swapfile.stat.exists
+
+    # -------------------------
+    # cgroups Configuration
+    # -------------------------
+
+    - name: Check current cmdline.txt content
+      ansible.builtin.slurp:
+        src: /boot/firmware/cmdline.txt
+      register: cmdline_content
+
+    - name: Enable cgroups for Kubernetes
+      ansible.builtin.replace:
+        path: /boot/firmware/cmdline.txt
+        regexp: "^((?!.*cgroup_enable=cpuset).*)$"
+        replace: '\1 cgroup_enable=cpuset cgroup_enable=memory cgroup_memory=1'
+      when: "'cgroup_enable=memory' not in (cmdline_content.content | b64decode)"
+      notify: Reboot node
+
+    # -------------------------
+    # NTP / Time Sync
+    # -------------------------
+
+    - name: Install chrony for time sync
+      ansible.builtin.apt:
+        name: chrony
+        state: present
+
+    - name: Enable and start chrony
+      ansible.builtin.systemd:
+        name: chrony
+        enabled: true
+        state: started
+
+    # -------------------------
+    # Useful packages
+    # -------------------------
+
+    - name: Install useful base packages
+      ansible.builtin.apt:
+        name:
+          - curl
+          - wget
+          - vim
+          - htop
+          - net-tools
+          - nfs-common
+        state: present
+
+    # -------------------------
+    # Network tuning for k3s NodePort
+    # -------------------------
+
+    - name: Disable reverse path filtering
+      ansible.posix.sysctl:
+        name: "{{ item }}"
+        value: "0"
+        state: present
+        reload: true
+      loop:
+        - net.ipv4.conf.all.rp_filter
+        - net.ipv4.conf.eth0.rp_filter
+
+    - name: Persist sysctl settings
+      ansible.builtin.copy:
+        dest: /etc/sysctl.d/99-k3s.conf
+        content: |
+          net.ipv4.conf.all.rp_filter=0
+          net.ipv4.conf.eth0.rp_filter=0
+        mode: '0644'
+
+  handlers:
+    - name: Restart SSH
+      ansible.builtin.systemd:
+        name: ssh
+        state: restarted
+
+    - name: Reboot node
+      ansible.builtin.reboot:
+        reboot_timeout: 300
+        msg: "Rebooting after cgroup configuration"

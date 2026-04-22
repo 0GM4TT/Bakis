@@ -1,0 +1,162 @@
+---
+# 03_longhorn.yml
+# Deploys Longhorn distributed storage on the k3s cluster
+# Run with: ansible-playbook playbooks/03_longhorn.yml
+
+- name: Install Longhorn prerequisites on all nodes
+  hosts: cluster
+  become: true
+
+  vars:
+    longhorn_version: "v1.11.1"
+
+  tasks:
+
+    # -------------------------
+    # Prerequisites
+    # -------------------------
+
+    - name: Install open-iscsi and dependencies
+      ansible.builtin.apt:
+        name:
+          - open-iscsi
+          - util-linux
+          - nfs-common
+        state: present
+        update_cache: true
+
+    - name: Enable and start iscsid
+      ansible.builtin.systemd:
+        name: iscsid
+        enabled: true
+        state: started
+
+    - name: Load iscsi_tcp kernel module
+      community.general.modprobe:
+        name: iscsi_tcp
+        state: present
+
+    - name: Persist iscsi_tcp module across reboots
+      ansible.builtin.copy:
+        dest: /etc/modules-load.d/iscsi.conf
+        content: "iscsi_tcp\n"
+        mode: '0644'
+
+- name: Deploy Longhorn via Helm
+  hosts: master
+  become: false
+
+  vars:
+    longhorn_version: "v1.11.1"
+
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml  
+
+  tasks:
+
+    # -------------------------
+    # Install Helm
+    # -------------------------
+
+    - name: Check if helm is installed
+      ansible.builtin.command: which helm
+      register: helm_check
+      changed_when: false
+      failed_when: false
+
+    - name: Download helm install script
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+        dest: /tmp/get_helm.sh
+        mode: '0755'
+      when: helm_check.rc != 0
+
+    - name: Install helm
+      ansible.builtin.shell: /tmp/get_helm.sh
+      when: helm_check.rc != 0
+      become: true
+
+    # -------------------------
+    # Deploy Longhorn
+    # -------------------------
+
+    - name: Add Longhorn helm repo
+      ansible.builtin.shell: |
+        helm repo add longhorn https://charts.longhorn.io
+        helm repo update
+      changed_when: true
+
+    - name: Install Longhorn
+      ansible.builtin.shell: >
+        helm upgrade --install longhorn longhorn/longhorn
+        --namespace longhorn-system
+        --create-namespace
+        --version {{ longhorn_version }}
+        --set defaultSettings.defaultReplicaCount=2
+        --set defaultSettings.allowCollectingLonghornUsageMetrics=false
+      changed_when: true
+
+    - name: Wait for Longhorn to be ready
+      ansible.builtin.shell: >
+        kubectl wait deployment longhorn-driver-deployer
+        --for=condition=Available
+        --namespace=longhorn-system
+        --timeout=300s
+      changed_when: false
+
+    - name: Wait for Longhorn manager to be ready
+      ansible.builtin.shell: >
+        kubectl rollout status daemonset/longhorn-manager
+        --namespace=longhorn-system
+        --timeout=300s
+      changed_when: false
+
+    # -------------------------
+    # Set Longhorn as default storage class
+    # -------------------------
+
+    - name: Remove local-path as default storage class
+      ansible.builtin.shell: >
+        kubectl patch storageclass local-path
+        -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
+      changed_when: true
+      ignore_errors: true
+
+    - name: Set Longhorn as default storage class
+      ansible.builtin.shell: >
+        kubectl patch storageclass longhorn
+        -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+      changed_when: true
+
+    # -------------------------
+    # Expose Longhorn UI NodePort service
+    # -------------------------
+
+    - name: Apply Longhorn UI NodePort service
+      ansible.builtin.shell: >
+       KUBECONFIG=~/.kube/config kubectl apply -f {{ playbook_dir }}/../manifests/longhorn/longhorn-ui-service.yaml
+      delegate_to: localhost
+      become: false
+      changed_when: true
+
+    # -------------------------
+    # Verify
+    # -------------------------
+
+    - name: Check Longhorn pods
+      ansible.builtin.shell: kubectl get pods -n longhorn-system
+      changed_when: false
+      register: longhorn_pods
+
+    - name: Show Longhorn pods
+      ansible.builtin.debug:
+        msg: "{{ longhorn_pods.stdout }}"
+
+    - name: Check storage classes
+      ansible.builtin.shell: kubectl get storageclass
+      changed_when: false
+      register: storage_classes
+
+    - name: Show storage classes
+      ansible.builtin.debug:
+        msg: "{{ storage_classes.stdout }}"

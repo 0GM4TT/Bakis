@@ -1,0 +1,195 @@
+---
+# 04_monitoring.yml
+# Deploys kube-prometheus-stack (Prometheus + Grafana + node_exporter)
+# Run with: ansible-playbook playbooks/04_monitoring.yml
+
+- name: Deploy monitoring stack
+  hosts: master
+  become: false
+
+  vars:
+    monitoring_version: "82.16.1"
+    grafana_password: "admin123"
+
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+  tasks:
+
+    # -------------------------
+    # Add Helm repo
+    # -------------------------
+
+    - name: Add prometheus-community helm repo
+      ansible.builtin.shell: |
+        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+        helm repo update
+      changed_when: true
+
+    # -------------------------
+    # Create values file
+    # -------------------------
+
+    - name: Create monitoring values file
+      ansible.builtin.copy:
+        dest: /tmp/monitoring-values.yaml
+        mode: '0644'
+        content: |
+          # Resource limits tuned for Raspberry Pi 5 (4GB RAM)
+          prometheus:
+            prometheusSpec:
+              nodeSelector:
+                kubernetes.io/hostname: k3s-master
+              # Scrape every 15 seconds as required
+              scrapeInterval: "15s"
+              evaluationInterval: "15s"
+              # Retention
+              retention: 7d
+              # Use Longhorn for persistent storage
+              storageSpec:
+                volumeClaimTemplate:
+                  spec:
+                    storageClassName: longhorn
+                    accessModes: ["ReadWriteOnce"]
+                    resources:
+                      requests:
+                        storage: 5Gi
+              # Resource limits for Pi
+              resources:
+                requests:
+                  memory: "400Mi"
+                  cpu: "200m"
+                limits:
+                  memory: "800Mi"
+                  cpu: "500m"
+
+          # Grafana configuration
+          grafana:
+            nodeSelector:
+              kubernetes.io/hostname: k3s-master
+            adminPassword: "{{ grafana_password }}"
+            # Use Longhorn for persistent storage
+            persistence:
+              enabled: true
+              storageClassName: longhorn
+              size: 2Gi
+            # Resource limits for Pi
+            resources:
+              requests:
+                memory: "100Mi"
+                cpu: "100m"
+              limits:
+                memory: "300Mi"
+                cpu: "300m"
+            # Expose Grafana via NodePort so we can access from browser
+            service:
+              type: NodePort
+              nodePort: 32000
+
+          # node-exporter - runs on every node, collects host metrics
+          prometheus-node-exporter:
+            resources:
+              requests:
+                memory: "30Mi"
+                cpu: "50m"
+              limits:
+                memory: "100Mi"
+                cpu: "100m"
+
+          # kube-state-metrics - collects kubernetes object metrics
+          kube-state-metrics:
+            resources:
+              requests:
+                memory: "50Mi"
+                cpu: "50m"
+              limits:
+                memory: "150Mi"
+                cpu: "100m"
+
+          # Alertmanager - disable to save resources
+          alertmanager:
+            enabled: false
+
+    # -------------------------
+    # Deploy monitoring stack
+    # -------------------------
+
+    - name: Install kube-prometheus-stack
+      ansible.builtin.shell: >
+        helm upgrade --install monitoring prometheus-community/kube-prometheus-stack
+        --namespace monitoring
+        --create-namespace
+        --version {{ monitoring_version }}
+        --values /tmp/monitoring-values.yaml
+        --timeout 10m
+      changed_when: true
+
+    - name: Wait for Prometheus to be ready
+      ansible.builtin.shell: >
+        kubectl wait deployment monitoring-kube-prometheus-operator
+        --for=condition=Available
+        --namespace=monitoring
+        --timeout=300s
+      changed_when: false
+
+    - name: Wait for Grafana to be ready
+      ansible.builtin.shell: >
+        kubectl wait deployment monitoring-grafana
+        --for=condition=Available
+        --namespace=monitoring
+        --timeout=300s
+      changed_when: false
+
+    # -------------------------
+    # Expose services
+    # -------------------------  
+
+    - name: Apply Prometheus NodePort service
+      ansible.builtin.shell: >
+        KUBECONFIG=~/.kube/config kubectl apply -f {{ playbook_dir }}/../manifests/monitoring/prometheus-nodeport.yaml
+      delegate_to: localhost
+      become: false
+      changed_when: true
+
+    # -------------------------
+    # Grafana boards configuration
+    # ------------------------- 
+
+    - name: Apply Grafana dashboard ConfigMap
+      ansible.builtin.shell: >
+        KUBECONFIG=~/.kube/config kubectl apply -f {{ playbook_dir }}/../manifests/monitoring/grafana-dashboard-configmap.yaml
+      delegate_to: localhost
+      become: false
+      changed_when: true
+
+    - name: Configure Grafana to load dashboards from ConfigMap
+      ansible.builtin.shell: >
+        KUBECONFIG=~/.kube/config kubectl patch deployment -n monitoring monitoring-grafana
+        --patch '{"spec":{"template":{"spec":{"volumes":[{"name":"arm-microcluster-dashboard","configMap":{"name":"grafana-dashboard-arm-microcluster"}}],"containers":[{"name":"grafana","volumeMounts":[{"name":"arm-microcluster-dashboard","mountPath":"/var/lib/grafana/dashboards/arm-microcluster"}]}]}}}}'
+      delegate_to: localhost
+      become: false
+      changed_when: true
+
+    # -------------------------
+    # Verify
+    # -------------------------
+
+    - name: Check monitoring pods
+      ansible.builtin.shell: kubectl get pods -n monitoring
+      changed_when: false
+      register: monitoring_pods
+
+    - name: Show monitoring pods
+      ansible.builtin.debug:
+        msg: "{{ monitoring_pods.stdout }}"
+
+    - name: Get Grafana NodePort
+      ansible.builtin.shell: >
+        kubectl get svc monitoring-grafana -n monitoring
+        -o jsonpath='{.spec.ports[0].nodePort}'
+      changed_when: false
+      register: grafana_port
+
+    - name: Show Grafana access info
+      ansible.builtin.debug:
+        msg: "Grafana available at http://192.168.50.200:{{ grafana_port.stdout }} - login: admin / {{ grafana_password }}"

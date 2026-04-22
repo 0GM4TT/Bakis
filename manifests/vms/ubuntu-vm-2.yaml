@@ -1,0 +1,92 @@
+---
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: ubuntu-vm-2
+  namespace: default
+  labels:
+    app: ubuntu-vm
+spec:
+  runStrategy: Always
+  template:
+    metadata:
+      labels:
+        kubevirt.io/domain: ubuntu-vm-2
+    spec:
+      domain:
+        cpu:
+          cores: 1
+        memory:
+          guest: 512Mi
+        devices:
+          disks:
+            - name: rootdisk
+              disk:
+                bus: virtio
+            - name: cloudinitdisk
+              disk:
+                bus: virtio
+          interfaces:
+            - name: default
+              masquerade: {}
+        resources:
+          requests:
+            memory: 512Mi
+            cpu: "1"
+      networks:
+        - name: default
+          pod: {}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values:
+                      - k3s-master    
+      volumes:
+        - name: rootdisk
+          dataVolume:
+            name: ubuntu-vm-2-disk
+        - name: cloudinitdisk
+          cloudInitNoCloud:
+            userData: |
+              #cloud-config
+              hostname: ubuntu-vm-2
+              user: ubuntu
+              password: ubuntu123
+              chpasswd:
+                expire: false
+              ssh_pwauth: true
+              ssh_authorized_keys:
+              # Replace with your own public key (cat ~/.ssh/ansible_id.pub)
+                - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCyDJEotLHwTmHYmSYVRLSuiPxTT/9EieQ7R9jFu90m/kA4JrZVBN4WKW3M+qkFSPQX95aJcctHYBt1BTQ4cGi1hQ1gtKsmxo67KrTHzC0VWWN3bOHkaLBp8BmiDEII11RsEYTNddQzNHSmkWTTq38Y7tpI9fqzdJWtpe45diAMGraFzLhBo8bsMbzhFH/kQ3na3+q9qUOnBxYQCeZJwwRzPn20O/c9QERmx+EJRKW4rDCYGWq36iLlCcecFaH79CH+By4Eue7TDOFBfzu/5h0UAVfE9PSGVMCNIyJGHrSHYLvYtGFjCFqaCEIuF8WeJUtevlEAeGue/4Elos/m8qaIH47QYgnmT903HrgVXF+KvguGG/UA3NmG7e1jgM2JOYj7/QPb2nxnc8dtm5o8jfT6YuF4exb+N+TuQk2n9y4NFGaviNKgN1LDEDBQLSPC2aq9QiXfKotwNF+XeOUKTK5NQQ6S9/K5DwnIomzyOuRUUkJ4Mt8w0EEbfr7UFQqsKoJFS9IkzjWCCeHvZ++Kd0R6zDMbFM8csXTA//cBa1K9GDxpm1deGBMF9uaPEzqVBk/8kb32xdSm+2zFqpHU50tJ7UHwpUcM16mXERyL0vbZgNOnCmJfvSD8lSMdMASSSa9bcfm1m2wgblBMV8w7xsQdV72/PFOoJsaCs+LDvRTPrw== ansible-jumphost
+              write_files:
+                - path: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+                  content: |
+                    network: {config: disabled}
+                - path: /etc/netplan/99-kubevirt.yaml
+                  content: |
+                    network:
+                      version: 2
+                      ethernets:
+                        enp1s0:
+                          dhcp4: true
+                          dhcp6: true
+              bootcmd:
+                - rm -f /etc/netplan/50-cloud-init.yaml             
+  dataVolumeTemplates:
+    - metadata:
+        name: ubuntu-vm-2-disk
+      spec:
+        storage:
+          accessModes:
+            - ReadWriteMany
+          resources:
+            requests:
+              storage: 5Gi
+          storageClassName: longhorn
+        source:
+          http:
+            url: "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-arm64.img"

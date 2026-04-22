@@ -1,0 +1,121 @@
+---
+# 02_kubevirt.yml
+# Deploys KubeVirt and CDI on the k3s cluster
+# Run with: ansible-playbook playbooks/02_kubevirt.yml
+
+- name: Deploy KubeVirt and CDI
+  hosts: master
+  become: false
+
+  vars:
+    kubevirt_version: "v1.8.0"
+    cdi_version: "v1.64.0"
+
+  tasks:
+
+    # -------------------------
+    # KubeVirt Operator
+    # -------------------------
+
+    - name: Deploy KubeVirt operator
+      ansible.builtin.shell: >
+        kubectl apply -f
+        https://github.com/kubevirt/kubevirt/releases/download/{{ kubevirt_version }}/kubevirt-operator.yaml
+      changed_when: true
+
+    - name: Deploy KubeVirt CR
+      ansible.builtin.shell: >
+        kubectl apply -f
+        https://github.com/kubevirt/kubevirt/releases/download/{{ kubevirt_version }}/kubevirt-cr.yaml
+      changed_when: true
+
+    - name: Wait for KubeVirt operator to be ready
+      ansible.builtin.shell: >
+        kubectl wait deployment virt-operator
+        --for=condition=Available
+        --namespace=kubevirt
+        --timeout=300s
+      changed_when: false
+
+    - name: Wait for KubeVirt to be fully deployed
+      ansible.builtin.shell: >
+        kubectl wait kubevirt kubevirt
+        --for=condition=Available
+        --namespace=kubevirt
+        --timeout=300s
+      changed_when: false
+
+    # -------------------------
+    # Enable KVM on all nodes
+    # -------------------------
+
+    - name: Verify KubeVirt can see KVM devices
+      ansible.builtin.shell: >
+        kubectl get nodes -o json |
+        grep -i kvm
+      changed_when: false
+      register: kvm_check
+      ignore_errors: true
+
+    - name: Show KVM status
+      ansible.builtin.debug:
+        msg: "{{ kvm_check.stdout }}"
+
+    # -------------------------
+    # CDI - Containerized Data Importer
+    # -------------------------
+
+    - name: Deploy CDI operator
+      ansible.builtin.shell: >
+        kubectl apply -f
+        https://github.com/kubevirt/containerized-data-importer/releases/download/{{ cdi_version }}/cdi-operator.yaml
+      changed_when: true
+
+    - name: Deploy CDI CR
+      ansible.builtin.shell: >
+        kubectl apply -f
+        https://github.com/kubevirt/containerized-data-importer/releases/download/{{ cdi_version }}/cdi-cr.yaml
+      changed_when: true
+
+    - name: Wait for CDI to be ready
+      ansible.builtin.shell: >
+        kubectl wait cdi cdi
+        --for=condition=Available
+        --namespace=cdi
+        --timeout=300s
+      changed_when: false
+
+    # -------------------------
+    # Install virtctl
+    # -------------------------
+
+    - name: Download virtctl binary
+      ansible.builtin.get_url:
+        url: "https://github.com/kubevirt/kubevirt/releases/download/{{ kubevirt_version }}/virtctl-{{ kubevirt_version }}-linux-arm64"
+        dest: /usr/local/bin/virtctl
+        mode: '0755'
+      become: true
+
+    # -------------------------
+    # Verify installation
+    # -------------------------
+
+    - name: Check all KubeVirt pods are running
+      ansible.builtin.shell: >
+        kubectl get pods -n kubevirt
+      changed_when: false
+      register: kubevirt_pods
+
+    - name: Show KubeVirt pods
+      ansible.builtin.debug:
+        msg: "{{ kubevirt_pods.stdout }}"
+
+    - name: Check CDI pods are running
+      ansible.builtin.shell: >
+        kubectl get pods -n cdi
+      changed_when: false
+      register: cdi_pods
+
+    - name: Show CDI pods
+      ansible.builtin.debug:
+        msg: "{{ cdi_pods.stdout }}"

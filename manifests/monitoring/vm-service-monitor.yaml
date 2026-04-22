@@ -1,0 +1,23 @@
+---
+# ServiceMonitor for VM node_exporter metrics
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: vm-node-exporter
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - default
+  selector:
+    matchLabels:
+      app: ubuntu-vm
+  endpoints:
+    - port: metrics
+      interval: 15s
+      path: /metrics
+      relabelings:
+        - targetLabel: job
+          replacement: node-exporter

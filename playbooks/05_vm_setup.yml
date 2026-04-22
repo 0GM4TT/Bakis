@@ -1,0 +1,208 @@
+---
+# 05_vm_setup.yml
+# Deploys VMs according to provided manifests
+# Configures VMs - installs node_exporter and apache httpd
+# Run with: ansible-playbook playbooks/05_vm_setup.yml
+
+- name: Apply VM services
+  hosts: localhost
+  become: false
+
+  environment:
+    KUBECONFIG: "{{ ansible_env.HOME }}/.kube/config"
+
+  vars:
+    repo_dir: "{{ playbook_dir }}/.."
+
+  tasks:
+
+    - name: Apply VM1 definition
+      ansible.builtin.shell: >
+        kubectl apply -f {{ repo_dir }}/manifests/vms/ubuntu-vm-1.yaml
+      changed_when: true
+
+    - name: Apply VM2 definition
+      ansible.builtin.shell: >
+        kubectl apply -f {{ repo_dir }}/manifests/vms/ubuntu-vm-2.yaml
+      changed_when: true
+
+    - name: Wait for VM disks to import
+      ansible.builtin.shell: >
+        kubectl wait datavolume ubuntu-vm-1-disk ubuntu-vm-2-disk
+        --for=condition=Ready
+        --timeout=600s
+      changed_when: false
+
+    - name: Wait for VMs to be running
+      ansible.builtin.shell: >
+        kubectl wait vmi ubuntu-vm-1 ubuntu-vm-2
+        --for=condition=Ready
+        --timeout=300s
+      changed_when: false
+
+    - name: Wait extra time for VM network to initialize
+      ansible.builtin.pause:
+        seconds: 60
+
+    - name: Apply VM1 services
+      ansible.builtin.shell: >
+        kubectl apply -f {{ repo_dir }}/manifests/vms/ubuntu-vm-1-services.yaml
+      changed_when: true
+
+    - name: Apply VM2 services
+      ansible.builtin.shell: >
+        kubectl apply -f {{ repo_dir }}/manifests/vms/ubuntu-vm-2-services.yaml
+      changed_when: true
+
+    - name: Wait for services to be ready
+      ansible.builtin.pause:
+        seconds: 10
+
+    - name: Show services
+      ansible.builtin.shell: kubectl get svc | grep ubuntu-vm
+      changed_when: false
+      register: services
+
+    - name: Display services
+      ansible.builtin.debug:
+        msg: "{{ services.stdout }}"
+
+- name: Configure VMs
+  hosts: vms
+  become: true
+
+  vars:
+    node_exporter_version: "1.8.2"
+
+  tasks:
+
+    # -------------------------
+    # Install Python web server
+    # -------------------------
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Stop and disable Apache if present
+      ansible.builtin.systemd:
+        name: apache2
+        enabled: false
+        state: stopped
+      ignore_errors: true
+
+    - name: Copy web server script
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../manifests/vms/webserver.py"
+        dest: /home/ubuntu/webserver.py
+        mode: '0755'
+
+    - name: Create webserver systemd service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/webserver.service
+        content: |
+          [Unit]
+          Description=Dynamic VM Web Server
+          After=network.target
+
+          [Service]
+          Environment=VM_NAME={{ inventory_hostname }}
+          ExecStart=/usr/bin/python3 /home/ubuntu/webserver.py
+          Restart=always
+          User=root
+
+          [Install]
+          WantedBy=multi-user.target
+        mode: '0644'
+
+    - name: Enable and start web server
+      ansible.builtin.systemd:
+        name: webserver
+        daemon_reload: true
+        enabled: true
+        state: started
+
+    # -------------------------
+    # Install node_exporter
+    # -------------------------
+
+    - name: Download node_exporter
+      ansible.builtin.get_url:
+        url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-arm64.tar.gz"
+        dest: /tmp/node_exporter.tar.gz
+        mode: '0644'
+
+    - name: Extract node_exporter
+      ansible.builtin.unarchive:
+        src: /tmp/node_exporter.tar.gz
+        dest: /tmp
+        remote_src: true
+
+    - name: Install node_exporter binary
+      ansible.builtin.copy:
+        src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-arm64/node_exporter"
+        dest: /usr/local/bin/node_exporter
+        mode: '0755'
+        remote_src: true
+
+    - name: Create node_exporter user
+      ansible.builtin.user:
+        name: node_exporter
+        shell: /bin/false
+        system: true
+        create_home: false
+
+    - name: Create node_exporter systemd service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/node_exporter.service
+        content: |
+          [Unit]
+          Description=Node Exporter
+          After=network.target
+
+          [Service]
+          User=node_exporter
+          ExecStart=/usr/local/bin/node_exporter
+
+          [Install]
+          WantedBy=multi-user.target
+        mode: '0644'
+
+    - name: Enable and start node_exporter
+      ansible.builtin.systemd:
+        name: node_exporter
+        daemon_reload: true
+        enabled: true
+        state: started
+
+    # -------------------------
+    # Expose services
+    # -------------------------  
+
+    - name: Apply VM metrics services
+      ansible.builtin.shell: >
+        KUBECONFIG=~/.kube/config kubectl apply -f {{ playbook_dir }}/../manifests/monitoring/vm-metrics-service.yaml
+      delegate_to: localhost
+      become: false
+      changed_when: true
+
+    - name: Apply VM ServiceMonitor
+      ansible.builtin.shell: >
+        KUBECONFIG=~/.kube/config kubectl apply -f {{ playbook_dir }}/../manifests/monitoring/vm-service-monitor.yaml
+      delegate_to: localhost
+      become: false
+      changed_when: true   
+
+    # -------------------------
+    # Verify
+    # -------------------------
+
+    - name: Check node_exporter is running
+      ansible.builtin.systemd:
+        name: node_exporter
+      register: node_exporter_status
+
+    - name: Show node_exporter status
+      ansible.builtin.debug:
+        msg: "node_exporter is {{ node_exporter_status.status.ActiveState }}"

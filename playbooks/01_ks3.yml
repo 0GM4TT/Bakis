@@ -1,0 +1,138 @@
+---
+# 01_k3s.yml
+# Deploys k3s cluster - master node first, then workers join
+# Run with: ansible-playbook playbooks/01_k3s.yml
+
+- name: Install k3s on master node
+  hosts: master
+  become: true
+
+  vars:
+    k3s_version: "v1.35.3+k3s1"
+
+  tasks:
+
+    - name: Create k3s config directory
+      ansible.builtin.file:
+        path: /etc/rancher/k3s
+        state: directory
+        mode: '0755'
+
+    - name: Configure k3s to use nftables proxy mode
+      ansible.builtin.copy:
+        dest: /etc/rancher/k3s/config.yaml
+        content: |
+          kube-proxy-arg:
+            - proxy-mode=nftables
+        mode: '0644'
+
+    - name: Download k3s install script
+      ansible.builtin.get_url:
+        url: https://get.k3s.io
+        dest: /tmp/k3s_install.sh
+        mode: '0755'
+
+    - name: Install k3s server on master
+      ansible.builtin.shell: |
+        INSTALL_K3S_VERSION="{{ k3s_version }}" \
+        INSTALL_K3S_EXEC="server \
+          --disable traefik \
+          --disable servicelb \
+          --write-kubeconfig-mode 644 \
+          --node-name {{ inventory_hostname }}" \
+        sh /tmp/k3s_install.sh
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Wait for k3s to be ready on master
+      ansible.builtin.wait_for:
+        path: /var/lib/rancher/k3s/server/node-token
+        timeout: 60
+
+    - name: Get k3s node token
+      ansible.builtin.slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      register: k3s_token
+
+    - name: Get master node IP
+      ansible.builtin.set_fact:
+        master_ip: "{{ ansible_host }}"
+        k3s_node_token: "{{ k3s_token.content | b64decode | trim }}"
+
+    - name: Wait for master node to be Ready
+      ansible.builtin.shell: k3s kubectl get nodes | grep "{{ inventory_hostname }}"
+      register: node_status
+      until: "'Ready' in node_status.stdout"
+      retries: 20
+      delay: 10
+      changed_when: false
+
+- name: Install k3s on worker nodes
+  hosts: workers
+  become: true
+
+  vars:
+    k3s_version: "v1.35.3+k3s1"
+
+  tasks:
+
+    - name: Create k3s config directory
+      ansible.builtin.file:
+        path: /etc/rancher/k3s
+        state: directory
+        mode: '0755'
+
+    - name: Configure k3s to use nftables proxy mode
+      ansible.builtin.copy:
+        dest: /etc/rancher/k3s/config.yaml
+        content: |
+          kube-proxy-arg:
+            - proxy-mode=nftables
+        mode: '0644'
+
+    - name: Download k3s install script
+      ansible.builtin.get_url:
+        url: https://get.k3s.io
+        dest: /tmp/k3s_install.sh
+        mode: '0755'
+
+    - name: Install k3s agent on workers
+      ansible.builtin.shell: |
+        INSTALL_K3S_VERSION="{{ k3s_version }}" \
+        K3S_URL="https://{{ hostvars[groups['master'][0]]['master_ip'] }}:6443" \
+        K3S_TOKEN="{{ hostvars[groups['master'][0]]['k3s_node_token'] }}" \
+        INSTALL_K3S_EXEC="agent --node-name {{ inventory_hostname }}" \
+        sh /tmp/k3s_install.sh
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Wait for worker to appear in cluster
+      ansible.builtin.shell: >
+        k3s kubectl get nodes --kubeconfig /etc/rancher/k3s/k3s.yaml
+        | grep "{{ inventory_hostname }}"
+      delegate_to: "{{ groups['master'][0] }}"
+      register: worker_status
+      until: "'Ready' in worker_status.stdout"
+      retries: 20
+      delay: 10
+      changed_when: false
+
+- name: Fetch kubeconfig to jumphost
+  hosts: master
+  become: true
+
+  tasks:
+
+    - name: Copy kubeconfig to jumphost
+      ansible.builtin.fetch:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: ~/.kube/config
+        flat: true
+
+    - name: Fix kubeconfig server address
+      ansible.builtin.replace:
+        path: ~/.kube/config
+        regexp: 'https://127.0.0.1:6443'
+        replace: "https://{{ ansible_host }}:6443"
+      delegate_to: localhost
+      become: false

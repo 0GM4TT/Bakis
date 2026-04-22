@@ -1,0 +1,33 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ubuntu-vm-1-metrics
+  namespace: default
+  labels:
+    app: ubuntu-vm
+    vm: ubuntu-vm-1
+spec:
+  selector:
+    kubevirt.io/domain: ubuntu-vm-1
+  ports:
+    - name: metrics
+      port: 9100
+      targetPort: 9100
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ubuntu-vm-2-metrics
+  namespace: default
+  labels:
+    app: ubuntu-vm
+    vm: ubuntu-vm-2
+spec:
+  selector:
+    kubevirt.io/domain: ubuntu-vm-2
+  ports:
+    - name: metrics
+      port: 9100
+      targetPort: 9100

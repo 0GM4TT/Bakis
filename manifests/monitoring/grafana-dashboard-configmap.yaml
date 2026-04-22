@@ -1,0 +1,4271 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provider
+  namespace: monitoring
+  labels:
+    grafana_dashboard_provider: "1"
+data:
+  provider.yaml: |
+    apiVersion: 1
+    providers:
+      - name: arm-microcluster
+        orgId: 1
+        folder: ARM Microcluster
+        type: file
+        disableDeletion: true
+        updateIntervalSeconds: 30
+        allowUiUpdates: false
+        options:
+          path: /var/lib/grafana/dashboards/arm-microcluster
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-arm-microcluster
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  arm-microcluster.json: |
+    {
+      "title": "ARM Microcluster \u2014 Overview",
+      "uid": "arm-microcluster-overview",
+      "tags": [
+        "kubernetes",
+        "kubevirt",
+        "longhorn",
+        "arm"
+      ],
+      "timezone": "browser",
+      "refresh": "30s",
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "schemaVersion": 38,
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "gridPos": {
+            "x": 0,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "Nodes Ready",
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 2
+                  },
+                  {
+                    "color": "green",
+                    "value": 3
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(kube_node_status_condition{condition='Ready',status='true'})",
+              "legendFormat": "Ready"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "gridPos": {
+            "x": 4,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "VMs Running",
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  },
+                  {
+                    "color": "green",
+                    "value": 2
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "count(kube_pod_status_phase{phase='Running'} == 1 and on(pod) kube_pod_info{created_by_kind='VirtualMachineInstance'})",
+              "legendFormat": "Running"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "gridPos": {
+            "x": 8,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "Cluster CPU avg",
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 70
+                  },
+                  {
+                    "color": "red",
+                    "value": 90
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "avg(100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance=~'192.168.50.(200|201|202):9100'}[5m])) * 100))",
+              "legendFormat": "CPU %"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "gridPos": {
+            "x": 12,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "Cluster RAM avg",
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 70
+                  },
+                  {
+                    "color": "red",
+                    "value": 90
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "avg(100 * (1 - node_memory_MemAvailable_bytes{instance=~'192.168.50.(200|201|202):9100'} / node_memory_MemTotal_bytes{instance=~'192.168.50.(200|201|202):9100'}))",
+              "legendFormat": "RAM %"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "type": "stat",
+          "gridPos": {
+            "x": 16,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "Longhorn Volumes",
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "green",
+                    "value": 4
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "count(kube_persistentvolume_status_phase{phase='Bound'})",
+              "legendFormat": "Bound PVs"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "type": "stat",
+          "gridPos": {
+            "x": 20,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "Master Uptime",
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": 0
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "node_time_seconds{instance='192.168.50.200:9100'} - node_boot_time_seconds{instance='192.168.50.200:9100'}",
+              "legendFormat": "Uptime"
+            }
+          ]
+        },
+        {
+          "id": 10,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 3,
+            "w": 24,
+            "h": 8
+          },
+          "title": "Pi Node CPU Usage (%)",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 5
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-master"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794f2",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73bf69",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#ff9830",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.200:9100'}[1m])) * 100)",
+              "legendFormat": "k3s-master"
+            },
+            {
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.201:9100'}[1m])) * 100)",
+              "legendFormat": "k3s-worker1"
+            },
+            {
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.202:9100'}[1m])) * 100)",
+              "legendFormat": "k3s-worker2"
+            }
+          ]
+        },
+        {
+          "id": 11,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 11,
+            "w": 24,
+            "h": 8
+          },
+          "title": "Pi Node RAM Usage (%)",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 5
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-master"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794f2",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73bf69",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#ff9830",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.50.200:9100'} / node_memory_MemTotal_bytes{instance='192.168.50.200:9100'})",
+              "legendFormat": "k3s-master"
+            },
+            {
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.50.201:9100'} / node_memory_MemTotal_bytes{instance='192.168.50.201:9100'})",
+              "legendFormat": "k3s-worker1"
+            },
+            {
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.50.202:9100'} / node_memory_MemTotal_bytes{instance='192.168.50.202:9100'})",
+              "legendFormat": "k3s-worker2"
+            }
+          ]
+        },
+        {
+          "id": 20,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 19,
+            "w": 12,
+            "h": 8
+          },
+          "title": "Pi Node Network Receive (KB/s)",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "KBs",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 5
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-master"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794f2",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73bf69",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#ff9830",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.200:9100',device='eth0'}[1m]) / 1024",
+              "legendFormat": "k3s-master"
+            },
+            {
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.201:9100',device='eth0'}[1m]) / 1024",
+              "legendFormat": "k3s-worker1"
+            },
+            {
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.202:9100',device='eth0'}[1m]) / 1024",
+              "legendFormat": "k3s-worker2"
+            }
+          ]
+        },
+        {
+          "id": 21,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 12,
+            "y": 19,
+            "w": 12,
+            "h": 8
+          },
+          "title": "Pi Node Disk Write Rate (KB/s)",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "KBs",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 5
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-master"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794f2",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73bf69",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#ff9830",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.200:9100'}[1m])) / 1024",
+              "legendFormat": "k3s-master"
+            },
+            {
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.201:9100'}[1m])) / 1024",
+              "legendFormat": "k3s-worker1"
+            },
+            {
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.202:9100'}[1m])) / 1024",
+              "legendFormat": "k3s-worker2"
+            }
+          ]
+        },
+        {
+          "id": 30,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 27,
+            "w": 12,
+            "h": 8
+          },
+          "title": "VM CPU Usage (%) \u2014 inside VMs",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 5
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ubuntu-vm-1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#b877d9",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ubuntu-vm-2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#fade2a",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "100 - (avg by (service) (rate(node_cpu_seconds_total{mode='idle',service='ubuntu-vm-1-metrics'}[1m])) * 100)",
+              "legendFormat": "ubuntu-vm-1"
+            },
+            {
+              "expr": "100 - (avg by (service) (rate(node_cpu_seconds_total{mode='idle',service='ubuntu-vm-2-metrics'}[1m])) * 100)",
+              "legendFormat": "ubuntu-vm-2"
+            }
+          ]
+        },
+        {
+          "id": 31,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 12,
+            "y": 27,
+            "w": 12,
+            "h": 8
+          },
+          "title": "VM RAM Usage (%) \u2014 inside VMs",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 5
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ubuntu-vm-1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#b877d9",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ubuntu-vm-2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#fade2a",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes{service='ubuntu-vm-1-metrics'} / node_memory_MemTotal_bytes{service='ubuntu-vm-1-metrics'})",
+              "legendFormat": "ubuntu-vm-1"
+            },
+            {
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes{service='ubuntu-vm-2-metrics'} / node_memory_MemTotal_bytes{service='ubuntu-vm-2-metrics'})",
+              "legendFormat": "ubuntu-vm-2"
+            }
+          ]
+        },
+        {
+          "id": 32,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 35,
+            "w": 12,
+            "h": 8
+          },
+          "title": "VM Network Receive (KB/s) \u2014 inside VMs",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "KBs",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 5
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ubuntu-vm-1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#b877d9",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ubuntu-vm-2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#fade2a",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "rate(node_network_receive_bytes_total{service='ubuntu-vm-1-metrics',device='enp1s0'}[1m]) / 1024",
+              "legendFormat": "ubuntu-vm-1"
+            },
+            {
+              "expr": "rate(node_network_receive_bytes_total{service='ubuntu-vm-2-metrics',device='enp1s0'}[1m]) / 1024",
+              "legendFormat": "ubuntu-vm-2"
+            }
+          ]
+        },
+        {
+          "id": 33,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 12,
+            "y": 35,
+            "w": 12,
+            "h": 8
+          },
+          "title": "VM Disk Write Rate (KB/s) \u2014 inside VMs",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "KBs",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 5
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ubuntu-vm-1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#b877d9",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ubuntu-vm-2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#fade2a",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{service='ubuntu-vm-1-metrics'}[1m])) / 1024",
+              "legendFormat": "ubuntu-vm-1"
+            },
+            {
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{service='ubuntu-vm-2-metrics'}[1m])) / 1024",
+              "legendFormat": "ubuntu-vm-2"
+            }
+          ]
+        },
+        {
+          "id": 40,
+          "type": "stat",
+          "gridPos": {
+            "x": 0,
+            "y": 43,
+            "w": 8,
+            "h": 6
+          },
+          "title": "Longhorn \u2014 Bound Persistent Volumes",
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "name",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            },
+            "orientation": "horizontal"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              },
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "1": {
+                      "text": "Bound",
+                      "color": "green",
+                      "index": 0
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "targets": [
+            {
+              "expr": "kube_persistentvolumeclaim_status_phase{phase='Bound',namespace='default'}",
+              "legendFormat": "{{persistentvolumeclaim}}",
+              "instant": true
+            },
+            {
+              "expr": "kube_persistentvolumeclaim_status_phase{phase='Bound',namespace='monitoring'}",
+              "legendFormat": "{{persistentvolumeclaim}}",
+              "instant": true
+            }
+          ],
+          "transformations": [
+            {
+              "id": "renameByRegex",
+              "options": {
+                "regex": "prometheus-monitoring-kube-prometheus-prometheus-db-.*",
+                "renamePattern": "prometheus-db"
+              }
+            }
+          ]
+        },
+        {
+          "id": 41,
+          "type": "table",
+          "gridPos": {
+            "x": 8,
+            "y": 43,
+            "w": 8,
+            "h": 6
+          },
+          "title": "VM Placement",
+          "options": {
+            "showHeader": true,
+            "sortBy": [
+              {
+                "displayName": "VM",
+                "desc": false
+              }
+            ]
+          },
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "created_by_name",
+                    "node",
+                    "host_ip"
+                  ]
+                }
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "renameByName": {
+                  "created_by_name": "VM",
+                  "node": "Pi Node",
+                  "host_ip": "Node IP"
+                }
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "filterable": false
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "kube_pod_info{created_by_kind='VirtualMachineInstance',namespace='default'}",
+              "legendFormat": "",
+              "instant": true,
+              "format": "table"
+            }
+          ]
+        },
+        {
+          "id": 42,
+          "type": "bargauge",
+          "gridPos": {
+            "x": 16,
+            "y": 43,
+            "w": 8,
+            "h": 6
+          },
+          "title": "Disk Usage per Node (%)",
+          "options": {
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 80
+                  },
+                  {
+                    "color": "red",
+                    "value": 90
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "100 - (node_filesystem_avail_bytes{instance='192.168.50.200:9100',mountpoint='/',fstype!='tmpfs'} / node_filesystem_size_bytes{instance='192.168.50.200:9100',mountpoint='/',fstype!='tmpfs'} * 100)",
+              "legendFormat": "k3s-master"
+            },
+            {
+              "expr": "100 - (node_filesystem_avail_bytes{instance='192.168.50.201:9100',mountpoint='/',fstype!='tmpfs'} / node_filesystem_size_bytes{instance='192.168.50.201:9100',mountpoint='/',fstype!='tmpfs'} * 100)",
+              "legendFormat": "k3s-worker1"
+            },
+            {
+              "expr": "100 - (node_filesystem_avail_bytes{instance='192.168.50.202:9100',mountpoint='/',fstype!='tmpfs'} / node_filesystem_size_bytes{instance='192.168.50.202:9100',mountpoint='/',fstype!='tmpfs'} * 100)",
+              "legendFormat": "k3s-worker2"
+            }
+          ]
+        }
+      ]
+    }
+  arm-ha-recovery.json: |
+    {
+      "title": "Scenario 1 \u2014 HA Recovery",
+      "uid": "arm-scenario-ha-recovery",
+      "tags": [
+        "arm",
+        "scenario",
+        "ha"
+      ],
+      "timezone": "browser",
+      "refresh": "10s",
+      "time": {
+        "from": "now-30m",
+        "to": "now"
+      },
+      "schemaVersion": 38,
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "gridPos": {
+            "x": 0,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "Nodes Ready",
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 2
+                  },
+                  {
+                    "color": "green",
+                    "value": 3
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(kube_node_status_condition{condition='Ready',status='true'})",
+              "legendFormat": "Ready"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "gridPos": {
+            "x": 4,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "VMs Running",
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  },
+                  {
+                    "color": "green",
+                    "value": 2
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "count(kube_pod_status_phase{phase='Running'} == 1 and on(pod) kube_pod_info{created_by_kind='VirtualMachineInstance'})",
+              "legendFormat": "Running"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "gridPos": {
+            "x": 8,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "k3s-master Status",
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              },
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "1": {
+                      "text": "Ready",
+                      "color": "green"
+                    },
+                    "0": {
+                      "text": "NotReady",
+                      "color": "red"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "targets": [
+            {
+              "expr": "kube_node_status_condition{node='k3s-master',condition='Ready',status='true'}",
+              "legendFormat": "master"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "gridPos": {
+            "x": 12,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "k3s-worker1 Status",
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              },
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "1": {
+                      "text": "Ready",
+                      "color": "green"
+                    },
+                    "0": {
+                      "text": "NotReady",
+                      "color": "red"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "targets": [
+            {
+              "expr": "kube_node_status_condition{node='k3s-worker1',condition='Ready',status='true'}",
+              "legendFormat": "worker1"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "type": "stat",
+          "gridPos": {
+            "x": 16,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "k3s-worker2 Status",
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              },
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "1": {
+                      "text": "Ready",
+                      "color": "green"
+                    },
+                    "0": {
+                      "text": "NotReady",
+                      "color": "red"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "targets": [
+            {
+              "expr": "kube_node_status_condition{node='k3s-worker2',condition='Ready',status='true'}",
+              "legendFormat": "worker2"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "type": "stat",
+          "gridPos": {
+            "x": 20,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "VM Placement",
+          "options": {
+            "colorMode": "none",
+            "graphMode": "none",
+            "textMode": "name",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            },
+            "orientation": "horizontal"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": 0
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "kube_pod_info{created_by_kind='VirtualMachineInstance',namespace='default'} * on(node) group_left() kube_node_status_condition{condition='Ready',status='true'}",
+              "legendFormat": "{{created_by_name}} \u2192 {{node}}",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 10,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 3,
+            "w": 24,
+            "h": 7
+          },
+          "title": "Node Status Over Time (1 = Ready, 0 = NotReady)",
+          "description": "Watch for a node dropping to 0 during failure simulation",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 1,
+              "custom": {
+                "lineWidth": 3,
+                "fillOpacity": 10,
+                "spanNulls": true
+              },
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "text": "NotReady"
+                    },
+                    "1": {
+                      "text": "Ready"
+                    }
+                  }
+                }
+              ]
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-master"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794f2",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73bf69",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#ff9830",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "kube_node_status_condition{condition='Ready',status='true',node='k3s-master'}",
+              "legendFormat": "k3s-master"
+            },
+            {
+              "expr": "kube_node_status_condition{condition='Ready',status='true',node='k3s-worker1'}",
+              "legendFormat": "k3s-worker1"
+            },
+            {
+              "expr": "kube_node_status_condition{condition='Ready',status='true',node='k3s-worker2'}",
+              "legendFormat": "k3s-worker2"
+            }
+          ]
+        },
+        {
+          "id": 11,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 10,
+            "w": 24,
+            "h": 7
+          },
+          "title": "VMs in Running Phase (1 = Running, 0 = Not Running)",
+          "description": "Watch VM drop to 0 after node failure, then recover on a healthy node",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 1,
+              "custom": {
+                "lineWidth": 3,
+                "fillOpacity": 10,
+                "spanNulls": true
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ubuntu-vm-1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#b877d9",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ubuntu-vm-2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#fade2a",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "kube_pod_status_phase{phase='Running',namespace='default'} * on(pod) group_left(created_by_name) kube_pod_info{created_by_kind='VirtualMachineInstance',created_by_name='ubuntu-vm-1'}",
+              "legendFormat": "ubuntu-vm-1"
+            },
+            {
+              "expr": "kube_pod_status_phase{phase='Running',namespace='default'} * on(pod) group_left(created_by_name) kube_pod_info{created_by_kind='VirtualMachineInstance',created_by_name='ubuntu-vm-2'}",
+              "legendFormat": "ubuntu-vm-2"
+            }
+          ]
+        },
+        {
+          "id": 20,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 17,
+            "w": 12,
+            "h": 7
+          },
+          "title": "Pi Node CPU During Recovery",
+          "description": "CPU spike on surviving nodes as they take over workloads",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 8
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-master"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794f2",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73bf69",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#ff9830",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.200:9100'}[1m])) * 100)",
+              "legendFormat": "k3s-master"
+            },
+            {
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.201:9100'}[1m])) * 100)",
+              "legendFormat": "k3s-worker1"
+            },
+            {
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.202:9100'}[1m])) * 100)",
+              "legendFormat": "k3s-worker2"
+            }
+          ]
+        },
+        {
+          "id": 21,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 12,
+            "y": 17,
+            "w": 12,
+            "h": 7
+          },
+          "title": "Pi Node RAM During Recovery",
+          "description": "RAM usage on surviving nodes increases as they host recovered VMs",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 8
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-master"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794f2",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73bf69",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#ff9830",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.50.200:9100'} / node_memory_MemTotal_bytes{instance='192.168.50.200:9100'})",
+              "legendFormat": "k3s-master"
+            },
+            {
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.50.201:9100'} / node_memory_MemTotal_bytes{instance='192.168.50.201:9100'})",
+              "legendFormat": "k3s-worker1"
+            },
+            {
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.50.202:9100'} / node_memory_MemTotal_bytes{instance='192.168.50.202:9100'})",
+              "legendFormat": "k3s-worker2"
+            }
+          ]
+        },
+        {
+          "id": 22,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 24,
+            "w": 24,
+            "h": 7
+          },
+          "title": "Network I/O During Recovery (KB/s)",
+          "description": "Network spike as Longhorn rebuilds volume replicas on healthy nodes",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "KBs",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 5
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-master RX"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794f2",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker1 RX"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73bf69",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker2 RX"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#ff9830",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.200:9100',device='eth0'}[1m]) / 1024",
+              "legendFormat": "k3s-master RX"
+            },
+            {
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.201:9100',device='eth0'}[1m]) / 1024",
+              "legendFormat": "k3s-worker1 RX"
+            },
+            {
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.202:9100',device='eth0'}[1m]) / 1024",
+              "legendFormat": "k3s-worker2 RX"
+            }
+          ]
+        }
+      ]
+    }
+  arm-live-migration.json: |
+    {
+      "title": "Scenario 2 \u2014 Live Migration",
+      "uid": "arm-scenario-live-migration",
+      "tags": [
+        "arm",
+        "scenario",
+        "migration"
+      ],
+      "timezone": "browser",
+      "refresh": "5s",
+      "time": {
+        "from": "now-15m",
+        "to": "now"
+      },
+      "schemaVersion": 38,
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "gridPos": {
+            "x": 0,
+            "y": 0,
+            "w": 6,
+            "h": 3
+          },
+          "title": "ubuntu-vm-1 Location",
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "name",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": 0
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "kube_pod_info{created_by_kind='VirtualMachineInstance',created_by_name='ubuntu-vm-1',namespace='default'}",
+              "legendFormat": "{{node}}",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "gridPos": {
+            "x": 6,
+            "y": 0,
+            "w": 6,
+            "h": 3
+          },
+          "title": "ubuntu-vm-2 Location",
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "name",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "purple",
+                    "value": 0
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "kube_pod_info{created_by_kind='VirtualMachineInstance',created_by_name='ubuntu-vm-2',namespace='default'}",
+              "legendFormat": "{{node}}",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "gridPos": {
+            "x": 12,
+            "y": 0,
+            "w": 6,
+            "h": 3
+          },
+          "title": "Migration In Progress",
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 3
+                  }
+                ]
+              },
+              "mappings": [
+                {
+                  "type": "range",
+                  "options": {
+                    "from": 0,
+                    "to": 2,
+                    "result": {
+                      "text": "Stable",
+                      "color": "green",
+                      "index": 0
+                    }
+                  }
+                },
+                {
+                  "type": "range",
+                  "options": {
+                    "from": 3,
+                    "to": 99,
+                    "result": {
+                      "text": "Migrating!",
+                      "color": "yellow",
+                      "index": 1
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "targets": [
+            {
+              "expr": "count(kube_pod_info{created_by_kind='VirtualMachineInstance',namespace='default'}) or vector(0)",
+              "legendFormat": "VM Pods"
+            }
+          ],
+          "description": "Counts virt-launcher pods. Normal=2. During migration=3 or 4 (old+new pods overlap briefly)."
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "gridPos": {
+            "x": 18,
+            "y": 0,
+            "w": 6,
+            "h": 3
+          },
+          "title": "VMs Running",
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  },
+                  {
+                    "color": "green",
+                    "value": 2
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "count(kube_pod_status_phase{phase='Running'} == 1 and on(pod) kube_pod_info{created_by_kind='VirtualMachineInstance'})",
+              "legendFormat": "Running"
+            }
+          ]
+        },
+        {
+          "id": 10,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 3,
+            "w": 24,
+            "h": 8
+          },
+          "title": "Network Throughput During Migration (KB/s) \u2014 Memory Copy Traffic",
+          "description": "Large network spike = VM memory being copied to destination node. Spike duration = migration time.",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "KBs",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 8
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-master TX"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794f2",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker1 TX"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73bf69",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker2 TX"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#ff9830",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-master RX"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794f2",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash",
+                      "dash": [
+                        4,
+                        4
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker1 RX"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73bf69",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash",
+                      "dash": [
+                        4,
+                        4
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker2 RX"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#ff9830",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash",
+                      "dash": [
+                        4,
+                        4
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "rate(node_network_transmit_bytes_total{instance='192.168.50.200:9100',device='eth0'}[30s]) / 1024",
+              "legendFormat": "k3s-master TX"
+            },
+            {
+              "expr": "rate(node_network_transmit_bytes_total{instance='192.168.50.201:9100',device='eth0'}[30s]) / 1024",
+              "legendFormat": "k3s-worker1 TX"
+            },
+            {
+              "expr": "rate(node_network_transmit_bytes_total{instance='192.168.50.202:9100',device='eth0'}[30s]) / 1024",
+              "legendFormat": "k3s-worker2 TX"
+            },
+            {
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.200:9100',device='eth0'}[30s]) / 1024",
+              "legendFormat": "k3s-master RX"
+            },
+            {
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.201:9100',device='eth0'}[30s]) / 1024",
+              "legendFormat": "k3s-worker1 RX"
+            },
+            {
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.202:9100',device='eth0'}[30s]) / 1024",
+              "legendFormat": "k3s-worker2 RX"
+            }
+          ]
+        },
+        {
+          "id": 20,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 11,
+            "w": 12,
+            "h": 7
+          },
+          "title": "Pi Node CPU During Migration",
+          "description": "Source node CPU stays busy copying memory. Destination node CPU rises as VM starts.",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 5
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-master"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794f2",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73bf69",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#ff9830",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.200:9100'}[30s])) * 100)",
+              "legendFormat": "k3s-master"
+            },
+            {
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.201:9100'}[30s])) * 100)",
+              "legendFormat": "k3s-worker1"
+            },
+            {
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.202:9100'}[30s])) * 100)",
+              "legendFormat": "k3s-worker2"
+            }
+          ]
+        },
+        {
+          "id": 21,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 12,
+            "y": 11,
+            "w": 12,
+            "h": 7
+          },
+          "title": "VM CPU During Migration (inside VMs)",
+          "description": "VM CPU should stay relatively stable during migration \u2014 the VM keeps running",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 5
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ubuntu-vm-1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#b877d9",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ubuntu-vm-2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#fade2a",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "100 - (avg by (service) (rate(node_cpu_seconds_total{mode='idle',service='ubuntu-vm-1-metrics'}[30s])) * 100)",
+              "legendFormat": "ubuntu-vm-1"
+            },
+            {
+              "expr": "100 - (avg by (service) (rate(node_cpu_seconds_total{mode='idle',service='ubuntu-vm-2-metrics'}[30s])) * 100)",
+              "legendFormat": "ubuntu-vm-2"
+            }
+          ]
+        },
+        {
+          "id": 22,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 18,
+            "w": 24,
+            "h": 7
+          },
+          "title": "Disk I/O During Migration (KB/s) \u2014 Longhorn Storage Activity",
+          "description": "Disk spikes show Longhorn writing volume data to the destination node",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "KBs",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 5
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-master write"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794f2",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker1 write"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73bf69",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker2 write"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#ff9830",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.200:9100'}[30s])) / 1024",
+              "legendFormat": "k3s-master write"
+            },
+            {
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.201:9100'}[30s])) / 1024",
+              "legendFormat": "k3s-worker1 write"
+            },
+            {
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.202:9100'}[30s])) / 1024",
+              "legendFormat": "k3s-worker2 write"
+            }
+          ]
+        }
+      ]
+    }
+  arm-resource-comparison.json: |
+    {
+      "title": "Scenario 3 \u2014 Resource Comparison",
+      "uid": "arm-scenario-resource-comparison",
+      "tags": [
+        "arm",
+        "scenario",
+        "resources"
+      ],
+      "timezone": "browser",
+      "refresh": "10s",
+      "time": {
+        "from": "now-30m",
+        "to": "now"
+      },
+      "schemaVersion": 38,
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "gridPos": {
+            "x": 0,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "Pi Nodes \u2014 Avg CPU",
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 60
+                  },
+                  {
+                    "color": "red",
+                    "value": 85
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "avg(100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance=~'192.168.50.(200|201|202):9100'}[1m])) * 100))",
+              "legendFormat": "Pi CPU avg"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "gridPos": {
+            "x": 4,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "VMs \u2014 Avg CPU",
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 60
+                  },
+                  {
+                    "color": "red",
+                    "value": 85
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "avg(100 - (avg by (service) (rate(node_cpu_seconds_total{mode='idle',service=~'ubuntu-vm-.*-metrics'}[1m])) * 100))",
+              "legendFormat": "VM CPU avg"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "gridPos": {
+            "x": 8,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "Virtualization CPU Overhead",
+          "description": "Difference between Pi node CPU and VM CPU = hypervisor overhead",
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 15
+                  },
+                  {
+                    "color": "red",
+                    "value": 25
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "avg(100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance=~'192.168.50.(200|201|202):9100'}[1m])) * 100)) - avg(100 - (avg by (service) (rate(node_cpu_seconds_total{mode='idle',service=~'ubuntu-vm-.*-metrics'}[1m])) * 100))",
+              "legendFormat": "Overhead"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "gridPos": {
+            "x": 12,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "Pi Nodes \u2014 Avg RAM",
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 70
+                  },
+                  {
+                    "color": "red",
+                    "value": 90
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "avg(100 * (1 - node_memory_MemAvailable_bytes{instance=~'192.168.50.(200|201|202):9100'} / node_memory_MemTotal_bytes{instance=~'192.168.50.(200|201|202):9100'}))",
+              "legendFormat": "Pi RAM avg"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "type": "stat",
+          "gridPos": {
+            "x": 16,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "VMs \u2014 Avg RAM",
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 70
+                  },
+                  {
+                    "color": "red",
+                    "value": 90
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "avg(100 * (1 - node_memory_MemAvailable_bytes{service=~'ubuntu-vm-.*-metrics'} / node_memory_MemTotal_bytes{service=~'ubuntu-vm-.*-metrics'}))",
+              "legendFormat": "VM RAM avg"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "type": "stat",
+          "gridPos": {
+            "x": 20,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "Virtualization RAM Overhead",
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 20
+                  },
+                  {
+                    "color": "red",
+                    "value": 35
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "avg(100 * (1 - node_memory_MemAvailable_bytes{instance=~'192.168.50.(200|201|202):9100'} / node_memory_MemTotal_bytes{instance=~'192.168.50.(200|201|202):9100'})) - avg(100 * (1 - node_memory_MemAvailable_bytes{service=~'ubuntu-vm-.*-metrics'} / node_memory_MemTotal_bytes{service=~'ubuntu-vm-.*-metrics'}))",
+              "legendFormat": "RAM Overhead"
+            }
+          ]
+        },
+        {
+          "id": 10,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 3,
+            "w": 12,
+            "h": 8
+          },
+          "title": "CPU Usage \u2014 Pi Nodes vs VMs (side by side)",
+          "description": "Solid lines = Pi nodes (physical). Dashed lines = VMs (virtual). Gap between them = virtualization overhead.",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 0
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-master"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794f2",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73bf69",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#ff9830",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ubuntu-vm-1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#b877d9",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash",
+                      "dash": [
+                        6,
+                        3
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ubuntu-vm-2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#fade2a",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash",
+                      "dash": [
+                        6,
+                        3
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.200:9100'}[1m])) * 100)",
+              "legendFormat": "k3s-master"
+            },
+            {
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.201:9100'}[1m])) * 100)",
+              "legendFormat": "k3s-worker1"
+            },
+            {
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.202:9100'}[1m])) * 100)",
+              "legendFormat": "k3s-worker2"
+            },
+            {
+              "expr": "100 - (avg by (service) (rate(node_cpu_seconds_total{mode='idle',service='ubuntu-vm-1-metrics'}[1m])) * 100)",
+              "legendFormat": "ubuntu-vm-1"
+            },
+            {
+              "expr": "100 - (avg by (service) (rate(node_cpu_seconds_total{mode='idle',service='ubuntu-vm-2-metrics'}[1m])) * 100)",
+              "legendFormat": "ubuntu-vm-2"
+            }
+          ]
+        },
+        {
+          "id": 11,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 12,
+            "y": 3,
+            "w": 12,
+            "h": 8
+          },
+          "title": "RAM Usage \u2014 Pi Nodes vs VMs (side by side)",
+          "description": "Solid lines = Pi nodes. Dashed lines = VMs. Pi nodes show higher RAM due to Kubernetes + KubeVirt + Longhorn overhead.",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 0
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-master"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794f2",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73bf69",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#ff9830",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ubuntu-vm-1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#b877d9",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash",
+                      "dash": [
+                        6,
+                        3
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ubuntu-vm-2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#fade2a",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash",
+                      "dash": [
+                        6,
+                        3
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.50.200:9100'} / node_memory_MemTotal_bytes{instance='192.168.50.200:9100'})",
+              "legendFormat": "k3s-master"
+            },
+            {
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.50.201:9100'} / node_memory_MemTotal_bytes{instance='192.168.50.201:9100'})",
+              "legendFormat": "k3s-worker1"
+            },
+            {
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.50.202:9100'} / node_memory_MemTotal_bytes{instance='192.168.50.202:9100'})",
+              "legendFormat": "k3s-worker2"
+            },
+            {
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes{service='ubuntu-vm-1-metrics'} / node_memory_MemTotal_bytes{service='ubuntu-vm-1-metrics'})",
+              "legendFormat": "ubuntu-vm-1"
+            },
+            {
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes{service='ubuntu-vm-2-metrics'} / node_memory_MemTotal_bytes{service='ubuntu-vm-2-metrics'})",
+              "legendFormat": "ubuntu-vm-2"
+            }
+          ]
+        },
+        {
+          "id": 20,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 11,
+            "w": 12,
+            "h": 7
+          },
+          "title": "Network I/O \u2014 Pi Nodes vs VMs (KB/s)",
+          "description": "Pi node network includes all cluster traffic. VM network shows only guest OS traffic.",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "KBs",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 0
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-master"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794f2",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73bf69",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#ff9830",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ubuntu-vm-1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#b877d9",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash",
+                      "dash": [
+                        6,
+                        3
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ubuntu-vm-2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#fade2a",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash",
+                      "dash": [
+                        6,
+                        3
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.200:9100',device='eth0'}[1m]) / 1024",
+              "legendFormat": "k3s-master"
+            },
+            {
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.201:9100',device='eth0'}[1m]) / 1024",
+              "legendFormat": "k3s-worker1"
+            },
+            {
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.202:9100',device='eth0'}[1m]) / 1024",
+              "legendFormat": "k3s-worker2"
+            },
+            {
+              "expr": "rate(node_network_receive_bytes_total{service='ubuntu-vm-1-metrics',device='enp1s0'}[1m]) / 1024",
+              "legendFormat": "ubuntu-vm-1"
+            },
+            {
+              "expr": "rate(node_network_receive_bytes_total{service='ubuntu-vm-2-metrics',device='enp1s0'}[1m]) / 1024",
+              "legendFormat": "ubuntu-vm-2"
+            }
+          ]
+        },
+        {
+          "id": 21,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 12,
+            "y": 11,
+            "w": 12,
+            "h": 7
+          },
+          "title": "Disk Write Rate \u2014 Pi Nodes vs VMs (KB/s)",
+          "description": "Pi node disk includes Longhorn replica writes. VM disk shows only guest writes.",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "KBs",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 0
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-master"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794f2",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73bf69",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#ff9830",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ubuntu-vm-1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#b877d9",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash",
+                      "dash": [
+                        6,
+                        3
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "ubuntu-vm-2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#fade2a",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash",
+                      "dash": [
+                        6,
+                        3
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.200:9100'}[1m])) / 1024",
+              "legendFormat": "k3s-master"
+            },
+            {
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.201:9100'}[1m])) / 1024",
+              "legendFormat": "k3s-worker1"
+            },
+            {
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.202:9100'}[1m])) / 1024",
+              "legendFormat": "k3s-worker2"
+            },
+            {
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{service='ubuntu-vm-1-metrics'}[1m])) / 1024",
+              "legendFormat": "ubuntu-vm-1"
+            },
+            {
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{service='ubuntu-vm-2-metrics'}[1m])) / 1024",
+              "legendFormat": "ubuntu-vm-2"
+            }
+          ]
+        }
+      ]
+    }
+  arm-vm-spinup.json: |
+    {
+      "title": "Scenario 4 \u2014 VM Deployment Time",
+      "uid": "arm-scenario-vm-spinup",
+      "tags": [
+        "arm",
+        "scenario",
+        "spinup"
+      ],
+      "timezone": "browser",
+      "refresh": "10s",
+      "time": {
+        "from": "now-30m",
+        "to": "now"
+      },
+      "schemaVersion": 38,
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "gridPos": {
+            "x": 0,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "Total Pods Running",
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "yellow",
+                    "value": 0
+                  },
+                  {
+                    "color": "green",
+                    "value": 30
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "count(kube_pod_status_phase{phase='Running'} == 1)",
+              "legendFormat": "Running"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "gridPos": {
+            "x": 4,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "Pods Pending",
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  },
+                  {
+                    "color": "red",
+                    "value": 5
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "count(kube_pod_status_phase{phase='Pending'} == 1) or vector(0)",
+              "legendFormat": "Pending"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "gridPos": {
+            "x": 8,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "VM PVCs Bound",
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "yellow",
+                    "value": 0
+                  },
+                  {
+                    "color": "green",
+                    "value": 4
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "count(kube_persistentvolumeclaim_status_phase{phase='Bound',namespace='default'}) or vector(0)",
+              "legendFormat": "Bound VM PVCs"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "gridPos": {
+            "x": 12,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "VMs Running",
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  },
+                  {
+                    "color": "green",
+                    "value": 2
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "count(kube_pod_status_phase{phase='Running'} == 1 and on(pod) kube_pod_info{created_by_kind='VirtualMachineInstance'}) or vector(0)",
+              "legendFormat": "VMs"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "type": "stat",
+          "gridPos": {
+            "x": 16,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "Cluster CPU avg",
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 60
+                  },
+                  {
+                    "color": "red",
+                    "value": 85
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "avg(100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance=~'192.168.50.(200|201|202):9100'}[1m])) * 100))",
+              "legendFormat": "CPU"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "type": "stat",
+          "gridPos": {
+            "x": 20,
+            "y": 0,
+            "w": 4,
+            "h": 3
+          },
+          "title": "Cluster RAM avg",
+          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "textMode": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": 0
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 70
+                  },
+                  {
+                    "color": "red",
+                    "value": 90
+                  }
+                ]
+              },
+              "mappings": []
+            }
+          },
+          "targets": [
+            {
+              "expr": "avg(100 * (1 - node_memory_MemAvailable_bytes{instance=~'192.168.50.(200|201|202):9100'} / node_memory_MemTotal_bytes{instance=~'192.168.50.(200|201|202):9100'}))",
+              "legendFormat": "RAM"
+            }
+          ]
+        },
+        {
+          "id": 10,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 3,
+            "w": 24,
+            "h": 7
+          },
+          "title": "Pod Count Over Time \u2014 Running vs Pending",
+          "description": "Watch pod count grow as VM deploys. Pending pods = waiting for resources. All Running = deployment complete.",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10
+              },
+              "min": 0
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Running"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73bf69",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Pending"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#ff9830",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Total"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794f2",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 0
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "count(kube_pod_status_phase{phase='Running'} == 1)",
+              "legendFormat": "Running"
+            },
+            {
+              "expr": "count(kube_pod_status_phase{phase='Pending'} == 1) or vector(0)",
+              "legendFormat": "Pending"
+            },
+            {
+              "expr": "count(kube_pod_status_phase == 1)",
+              "legendFormat": "Total"
+            }
+          ]
+        },
+        {
+          "id": 11,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 10,
+            "w": 12,
+            "h": 7
+          },
+          "title": "VM Disk Import Status (ubuntu-vm PVCs only)",
+          "description": "VM disk PVCs only. During fresh deployment: starts at Pending, moves to Bound when import completes. In steady state: 2 Bound, 0 Pending.",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10
+              },
+              "min": 0
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Bound"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73bf69",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Pending"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#ff9830",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "count(kube_persistentvolumeclaim_status_phase{phase='Bound',namespace='default',persistentvolumeclaim=~'ubuntu-vm.*'}) or vector(0)",
+              "legendFormat": "Bound"
+            },
+            {
+              "expr": "count(kube_persistentvolumeclaim_status_phase{phase='Pending',namespace='default',persistentvolumeclaim=~'ubuntu-vm.*'}) or vector(0)",
+              "legendFormat": "Pending"
+            }
+          ]
+        },
+        {
+          "id": 12,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 12,
+            "y": 10,
+            "w": 12,
+            "h": 7
+          },
+          "title": "Disk Write Rate During Deployment (KB/s)",
+          "description": "Large disk write spike = Ubuntu image being written to Longhorn storage. Spike duration = disk import time.",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "KBs",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 8
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-master"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794f2",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73bf69",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#ff9830",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.200:9100'}[30s])) / 1024",
+              "legendFormat": "k3s-master"
+            },
+            {
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.201:9100'}[30s])) / 1024",
+              "legendFormat": "k3s-worker1"
+            },
+            {
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.202:9100'}[30s])) / 1024",
+              "legendFormat": "k3s-worker2"
+            }
+          ]
+        },
+        {
+          "id": 20,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 17,
+            "w": 12,
+            "h": 7
+          },
+          "title": "CPU During Deployment",
+          "description": "CPU spike during disk import (CDI writing image). Second spike when QEMU starts the VM.",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 5
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-master"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794f2",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73bf69",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#ff9830",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.200:9100'}[30s])) * 100)",
+              "legendFormat": "k3s-master"
+            },
+            {
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.201:9100'}[30s])) * 100)",
+              "legendFormat": "k3s-worker1"
+            },
+            {
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.202:9100'}[30s])) * 100)",
+              "legendFormat": "k3s-worker2"
+            }
+          ]
+        },
+        {
+          "id": 21,
+          "type": "timeseries",
+          "gridPos": {
+            "x": 12,
+            "y": 17,
+            "w": 12,
+            "h": 7
+          },
+          "title": "Network During Deployment (KB/s)",
+          "description": "Network spike = Ubuntu cloud image downloading from internet. Spike size reflects image size (~500MB).",
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "KBs",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 5
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-master"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794f2",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker1"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73bf69",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "k3s-worker2"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#ff9830",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "targets": [
+            {
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.200:9100',device='eth0'}[30s]) / 1024",
+              "legendFormat": "k3s-master"
+            },
+            {
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.201:9100',device='eth0'}[30s]) / 1024",
+              "legendFormat": "k3s-worker1"
+            },
+            {
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.202:9100',device='eth0'}[30s]) / 1024",
+              "legendFormat": "k3s-worker2"
+            }
+          ]
+        }
+      ]
+    }
