@@ -9,7 +9,7 @@
 
   vars:
     monitoring_version: "82.16.1"
-    grafana_password: "admin123"
+    grafana_password: "augisugnius"
 
   environment:
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml

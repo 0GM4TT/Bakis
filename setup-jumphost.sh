@@ -40,9 +40,9 @@ sudo firewall-cmd --reload
 
 echo "==> Adding Pi nodes to /etc/hosts..."
 if ! grep -q 'k3s-master' /etc/hosts; then
-    echo "192.168.50.200 k3s-master
-192.168.50.201 k3s-worker1
-192.168.50.202 k3s-worker2" | sudo tee -a /etc/hosts
+    echo "192.168.1.155 k3s-master
+192.168.1.160 k3s-worker1
+192.168.1.103 k3s-worker2" | sudo tee -a /etc/hosts
     echo "==> /etc/hosts updated"
 else
     echo "==> /etc/hosts already configured, skipping..."

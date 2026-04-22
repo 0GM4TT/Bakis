@@ -17,7 +17,7 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-MASTER_IP="192.168.50.200"
+MASTER_IP="192.168.1.155"
 
 # =============================================================================
 # HELPER FUNCTIONS
@@ -113,9 +113,9 @@ print_header "NODE STATUS"
 for node in k3s-master k3s-worker1 k3s-worker2; do
     # Get IP from hosts.ini equivalent
     case $node in
-        k3s-master)  ip="192.168.50.200" ;;
-        k3s-worker1) ip="192.168.50.201" ;;
-        k3s-worker2) ip="192.168.50.202" ;;
+        k3s-master)  ip="192.168.1.155" ;;
+        k3s-worker1) ip="192.168.1.160" ;;
+        k3s-worker2) ip="192.168.1.103" ;;
     esac
 
     status=$(node_status "$node")
@@ -220,9 +220,9 @@ echo -e "    $status"
 
 echo ""
 echo -e "  Connect to Pi nodes:\n"
-printf "  %-12s %s\n" "Master:" "ssh msm@192.168.50.200"
-printf "  %-12s %s\n" "Worker1:" "ssh msm@192.168.50.201"
-printf "  %-12s %s\n" "Worker2:" "ssh msm@192.168.50.202"
+printf "  %-12s %s\n" "Master:" "ssh bakalauras@192.168.50.200"
+printf "  %-12s %s\n" "Worker1:" "ssh bakalauras@192.168.50.201"
+printf "  %-12s %s\n" "Worker2:" "ssh bakalauras@192.168.50.202"
 
 # =============================================================================
 # STORAGE STATUS
@@ -268,7 +268,7 @@ for node_info in "k3s-master:192.168.50.200" "k3s-worker1:192.168.50.201" "k3s-w
     node_ip="${node_info#*:}"
 
     disk_info=$(ssh -i ~/.ssh/ansible_id -o ConnectTimeout=3 -o StrictHostKeyChecking=no \
-        msm@"$node_ip" "df -h / | tail -1" 2>/dev/null)
+        bakalauras@"$node_ip" "df -h / | tail -1" 2>/dev/null)
 
     if [ -n "$disk_info" ]; then
         used=$(echo "$disk_info" | awk '{print $3}')

@@ -321,7 +321,7 @@ data:
           },
           "targets": [
             {
-              "expr": "node_time_seconds{instance='192.168.50.200:9100'} - node_boot_time_seconds{instance='192.168.50.200:9100'}",
+              "expr": "node_time_seconds{instance='192.168.1.155:9100'} - node_boot_time_seconds{instance='192.168.1.155:9100'}",
               "legendFormat": "Uptime"
             }
           ]
@@ -405,15 +405,15 @@ data:
           },
           "targets": [
             {
-              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.200:9100'}[1m])) * 100)",
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.1.155:9100'}[1m])) * 100)",
               "legendFormat": "k3s-master"
             },
             {
-              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.201:9100'}[1m])) * 100)",
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.1.160:9100'}[1m])) * 100)",
               "legendFormat": "k3s-worker1"
             },
             {
-              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.202:9100'}[1m])) * 100)",
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.1.103:9100'}[1m])) * 100)",
               "legendFormat": "k3s-worker2"
             }
           ]
@@ -497,15 +497,15 @@ data:
           },
           "targets": [
             {
-              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.50.200:9100'} / node_memory_MemTotal_bytes{instance='192.168.50.200:9100'})",
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.1.155:9100'} / node_memory_MemTotal_bytes{instance='192.168.1.155:9100'})",
               "legendFormat": "k3s-master"
             },
             {
-              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.50.201:9100'} / node_memory_MemTotal_bytes{instance='192.168.50.201:9100'})",
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.1.160:9100'} / node_memory_MemTotal_bytes{instance='192.168.1.160:9100'})",
               "legendFormat": "k3s-worker1"
             },
             {
-              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.50.202:9100'} / node_memory_MemTotal_bytes{instance='192.168.50.202:9100'})",
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.1.103:9100'} / node_memory_MemTotal_bytes{instance='192.168.1.103:9100'})",
               "legendFormat": "k3s-worker2"
             }
           ]
@@ -587,15 +587,15 @@ data:
           },
           "targets": [
             {
-              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.200:9100',device='eth0'}[1m]) / 1024",
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.1.155:9100',device='eth0'}[1m]) / 1024",
               "legendFormat": "k3s-master"
             },
             {
-              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.201:9100',device='eth0'}[1m]) / 1024",
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.1.160:9100',device='eth0'}[1m]) / 1024",
               "legendFormat": "k3s-worker1"
             },
             {
-              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.202:9100',device='eth0'}[1m]) / 1024",
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.1.103:9100',device='eth0'}[1m]) / 1024",
               "legendFormat": "k3s-worker2"
             }
           ]
@@ -677,15 +677,15 @@ data:
           },
           "targets": [
             {
-              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.200:9100'}[1m])) / 1024",
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.1.155:9100'}[1m])) / 1024",
               "legendFormat": "k3s-master"
             },
             {
-              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.201:9100'}[1m])) / 1024",
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.1.160:9100'}[1m])) / 1024",
               "legendFormat": "k3s-worker1"
             },
             {
-              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.202:9100'}[1m])) / 1024",
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.1.103:9100'}[1m])) / 1024",
               "legendFormat": "k3s-worker2"
             }
           ]
@@ -1154,15 +1154,15 @@ data:
           },
           "targets": [
             {
-              "expr": "100 - (node_filesystem_avail_bytes{instance='192.168.50.200:9100',mountpoint='/',fstype!='tmpfs'} / node_filesystem_size_bytes{instance='192.168.50.200:9100',mountpoint='/',fstype!='tmpfs'} * 100)",
+              "expr": "100 - (node_filesystem_avail_bytes{instance='192.168.1.155:9100',mountpoint='/',fstype!='tmpfs'} / node_filesystem_size_bytes{instance='192.168.1.155:9100',mountpoint='/',fstype!='tmpfs'} * 100)",
               "legendFormat": "k3s-master"
             },
             {
-              "expr": "100 - (node_filesystem_avail_bytes{instance='192.168.50.201:9100',mountpoint='/',fstype!='tmpfs'} / node_filesystem_size_bytes{instance='192.168.50.201:9100',mountpoint='/',fstype!='tmpfs'} * 100)",
+              "expr": "100 - (node_filesystem_avail_bytes{instance='192.168.1.160:9100',mountpoint='/',fstype!='tmpfs'} / node_filesystem_size_bytes{instance='192.168.1.160:9100',mountpoint='/',fstype!='tmpfs'} * 100)",
               "legendFormat": "k3s-worker1"
             },
             {
-              "expr": "100 - (node_filesystem_avail_bytes{instance='192.168.50.202:9100',mountpoint='/',fstype!='tmpfs'} / node_filesystem_size_bytes{instance='192.168.50.202:9100',mountpoint='/',fstype!='tmpfs'} * 100)",
+              "expr": "100 - (node_filesystem_avail_bytes{instance='192.168.1.103:9100',mountpoint='/',fstype!='tmpfs'} / node_filesystem_size_bytes{instance='192.168.1.103:9100',mountpoint='/',fstype!='tmpfs'} * 100)",
               "legendFormat": "k3s-worker2"
             }
           ]
@@ -1758,15 +1758,15 @@ data:
           },
           "targets": [
             {
-              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.200:9100'}[1m])) * 100)",
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.1.155:9100'}[1m])) * 100)",
               "legendFormat": "k3s-master"
             },
             {
-              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.201:9100'}[1m])) * 100)",
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.1.160:9100'}[1m])) * 100)",
               "legendFormat": "k3s-worker1"
             },
             {
-              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.202:9100'}[1m])) * 100)",
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.1.103:9100'}[1m])) * 100)",
               "legendFormat": "k3s-worker2"
             }
           ]
@@ -1851,15 +1851,15 @@ data:
           },
           "targets": [
             {
-              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.50.200:9100'} / node_memory_MemTotal_bytes{instance='192.168.50.200:9100'})",
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.1.155:9100'} / node_memory_MemTotal_bytes{instance='192.168.1.155:9100'})",
               "legendFormat": "k3s-master"
             },
             {
-              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.50.201:9100'} / node_memory_MemTotal_bytes{instance='192.168.50.201:9100'})",
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.1.160:9100'} / node_memory_MemTotal_bytes{instance='192.168.1.160:9100'})",
               "legendFormat": "k3s-worker1"
             },
             {
-              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.50.202:9100'} / node_memory_MemTotal_bytes{instance='192.168.50.202:9100'})",
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.1.103:9100'} / node_memory_MemTotal_bytes{instance='192.168.1.103:9100'})",
               "legendFormat": "k3s-worker2"
             }
           ]
@@ -1942,15 +1942,15 @@ data:
           },
           "targets": [
             {
-              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.200:9100',device='eth0'}[1m]) / 1024",
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.1.155:9100',device='eth0'}[1m]) / 1024",
               "legendFormat": "k3s-master RX"
             },
             {
-              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.201:9100',device='eth0'}[1m]) / 1024",
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.1.160:9100',device='eth0'}[1m]) / 1024",
               "legendFormat": "k3s-worker1 RX"
             },
             {
-              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.202:9100',device='eth0'}[1m]) / 1024",
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.1.103:9100',device='eth0'}[1m]) / 1024",
               "legendFormat": "k3s-worker2 RX"
             }
           ]
@@ -2327,27 +2327,27 @@ data:
           },
           "targets": [
             {
-              "expr": "rate(node_network_transmit_bytes_total{instance='192.168.50.200:9100',device='eth0'}[30s]) / 1024",
+              "expr": "rate(node_network_transmit_bytes_total{instance='192.168.1.155:9100',device='eth0'}[30s]) / 1024",
               "legendFormat": "k3s-master TX"
             },
             {
-              "expr": "rate(node_network_transmit_bytes_total{instance='192.168.50.201:9100',device='eth0'}[30s]) / 1024",
+              "expr": "rate(node_network_transmit_bytes_total{instance='192.168.1.160:9100',device='eth0'}[30s]) / 1024",
               "legendFormat": "k3s-worker1 TX"
             },
             {
-              "expr": "rate(node_network_transmit_bytes_total{instance='192.168.50.202:9100',device='eth0'}[30s]) / 1024",
+              "expr": "rate(node_network_transmit_bytes_total{instance='192.168.1.103:9100',device='eth0'}[30s]) / 1024",
               "legendFormat": "k3s-worker2 TX"
             },
             {
-              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.200:9100',device='eth0'}[30s]) / 1024",
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.1.155:9100',device='eth0'}[30s]) / 1024",
               "legendFormat": "k3s-master RX"
             },
             {
-              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.201:9100',device='eth0'}[30s]) / 1024",
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.1.160:9100',device='eth0'}[30s]) / 1024",
               "legendFormat": "k3s-worker1 RX"
             },
             {
-              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.202:9100',device='eth0'}[30s]) / 1024",
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.1.103:9100',device='eth0'}[30s]) / 1024",
               "legendFormat": "k3s-worker2 RX"
             }
           ]
@@ -2432,15 +2432,15 @@ data:
           },
           "targets": [
             {
-              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.200:9100'}[30s])) * 100)",
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.1.155:9100'}[30s])) * 100)",
               "legendFormat": "k3s-master"
             },
             {
-              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.201:9100'}[30s])) * 100)",
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.1.160:9100'}[30s])) * 100)",
               "legendFormat": "k3s-worker1"
             },
             {
-              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.202:9100'}[30s])) * 100)",
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.1.103:9100'}[30s])) * 100)",
               "legendFormat": "k3s-worker2"
             }
           ]
@@ -2597,15 +2597,15 @@ data:
           },
           "targets": [
             {
-              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.200:9100'}[30s])) / 1024",
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.1.155:9100'}[30s])) / 1024",
               "legendFormat": "k3s-master write"
             },
             {
-              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.201:9100'}[30s])) / 1024",
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.1.160:9100'}[30s])) / 1024",
               "legendFormat": "k3s-worker1 write"
             },
             {
-              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.202:9100'}[30s])) / 1024",
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.1.103:9100'}[30s])) / 1024",
               "legendFormat": "k3s-worker2 write"
             }
           ]
@@ -3054,15 +3054,15 @@ data:
           },
           "targets": [
             {
-              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.200:9100'}[1m])) * 100)",
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.1.155:9100'}[1m])) * 100)",
               "legendFormat": "k3s-master"
             },
             {
-              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.201:9100'}[1m])) * 100)",
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.1.160:9100'}[1m])) * 100)",
               "legendFormat": "k3s-worker1"
             },
             {
-              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.202:9100'}[1m])) * 100)",
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.1.103:9100'}[1m])) * 100)",
               "legendFormat": "k3s-worker2"
             },
             {
@@ -3205,15 +3205,15 @@ data:
           },
           "targets": [
             {
-              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.50.200:9100'} / node_memory_MemTotal_bytes{instance='192.168.50.200:9100'})",
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.1.155:9100'} / node_memory_MemTotal_bytes{instance='192.168.1.155:9100'})",
               "legendFormat": "k3s-master"
             },
             {
-              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.50.201:9100'} / node_memory_MemTotal_bytes{instance='192.168.50.201:9100'})",
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.1.160:9100'} / node_memory_MemTotal_bytes{instance='192.168.1.160:9100'})",
               "legendFormat": "k3s-worker1"
             },
             {
-              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.50.202:9100'} / node_memory_MemTotal_bytes{instance='192.168.50.202:9100'})",
+              "expr": "100 * (1 - node_memory_MemAvailable_bytes{instance='192.168.1.103:9100'} / node_memory_MemTotal_bytes{instance='192.168.1.103:9100'})",
               "legendFormat": "k3s-worker2"
             },
             {
@@ -3354,15 +3354,15 @@ data:
           },
           "targets": [
             {
-              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.200:9100',device='eth0'}[1m]) / 1024",
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.1.155:9100',device='eth0'}[1m]) / 1024",
               "legendFormat": "k3s-master"
             },
             {
-              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.201:9100',device='eth0'}[1m]) / 1024",
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.1.160:9100',device='eth0'}[1m]) / 1024",
               "legendFormat": "k3s-worker1"
             },
             {
-              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.202:9100',device='eth0'}[1m]) / 1024",
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.1.103:9100',device='eth0'}[1m]) / 1024",
               "legendFormat": "k3s-worker2"
             },
             {
@@ -3503,15 +3503,15 @@ data:
           },
           "targets": [
             {
-              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.200:9100'}[1m])) / 1024",
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.1.155:9100'}[1m])) / 1024",
               "legendFormat": "k3s-master"
             },
             {
-              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.201:9100'}[1m])) / 1024",
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.1.160:9100'}[1m])) / 1024",
               "legendFormat": "k3s-worker1"
             },
             {
-              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.202:9100'}[1m])) / 1024",
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.1.103:9100'}[1m])) / 1024",
               "legendFormat": "k3s-worker2"
             },
             {
@@ -4070,15 +4070,15 @@ data:
           },
           "targets": [
             {
-              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.200:9100'}[30s])) / 1024",
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.1.155:9100'}[30s])) / 1024",
               "legendFormat": "k3s-master"
             },
             {
-              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.201:9100'}[30s])) / 1024",
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.1.160:9100'}[30s])) / 1024",
               "legendFormat": "k3s-worker1"
             },
             {
-              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.50.202:9100'}[30s])) / 1024",
+              "expr": "sum by (instance) (rate(node_disk_written_bytes_total{instance='192.168.1.103:9100'}[30s])) / 1024",
               "legendFormat": "k3s-worker2"
             }
           ]
@@ -4163,15 +4163,15 @@ data:
           },
           "targets": [
             {
-              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.200:9100'}[30s])) * 100)",
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.1.155:9100'}[30s])) * 100)",
               "legendFormat": "k3s-master"
             },
             {
-              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.201:9100'}[30s])) * 100)",
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.1.160:9100'}[30s])) * 100)",
               "legendFormat": "k3s-worker1"
             },
             {
-              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.50.202:9100'}[30s])) * 100)",
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle',instance='192.168.1.103:9100'}[30s])) * 100)",
               "legendFormat": "k3s-worker2"
             }
           ]
@@ -4254,15 +4254,15 @@ data:
           },
           "targets": [
             {
-              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.200:9100',device='eth0'}[30s]) / 1024",
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.1.155:9100',device='eth0'}[30s]) / 1024",
               "legendFormat": "k3s-master"
             },
             {
-              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.201:9100',device='eth0'}[30s]) / 1024",
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.1.160:9100',device='eth0'}[30s]) / 1024",
               "legendFormat": "k3s-worker1"
             },
             {
-              "expr": "rate(node_network_receive_bytes_total{instance='192.168.50.202:9100',device='eth0'}[30s]) / 1024",
+              "expr": "rate(node_network_receive_bytes_total{instance='192.168.1.103:9100',device='eth0'}[30s]) / 1024",
               "legendFormat": "k3s-worker2"
             }
           ]
