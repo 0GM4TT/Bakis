@@ -220,9 +220,9 @@ echo -e "    $status"
 
 echo ""
 echo -e "  Connect to Pi nodes:\n"
-printf "  %-12s %s\n" "Master:" "ssh bakalauras@192.168.50.200"
-printf "  %-12s %s\n" "Worker1:" "ssh bakalauras@192.168.50.201"
-printf "  %-12s %s\n" "Worker2:" "ssh bakalauras@192.168.50.202"
+printf "  %-12s %s\n" "Master:" "ssh bakalauras@192.168.1.155"
+printf "  %-12s %s\n" "Worker1:" "ssh bakalauras@192.168.1.160"
+printf "  %-12s %s\n" "Worker2:" "ssh bakalauras@192.168.1.103"
 
 # =============================================================================
 # STORAGE STATUS
@@ -263,7 +263,7 @@ fi
 
 print_header "DISK USAGE ON PI NODES"
 
-for node_info in "k3s-master:192.168.50.200" "k3s-worker1:192.168.50.201" "k3s-worker2:192.168.50.202"; do
+for node_info in "k3s-master:192.168.1.155" "k3s-worker1:192.168.1.160" "k3s-worker2:192.168.1.103"; do
     node_name="${node_info%%:*}"
     node_ip="${node_info#*:}"
 
