@@ -29,7 +29,7 @@
 
     - name: Copy ansible public key to authorized_keys
       ansible.posix.authorized_key:
-        user: bakalauaras
+        user: bakalauras
         state: present
         key: "{{ lookup('file', '~/.ssh/ansible_id.pub') }}"
 
