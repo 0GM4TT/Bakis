@@ -79,18 +79,39 @@ trigger_and_wait_migration() {
     original_node=$(get_vm_node "$TEST_VM")
     log_info "Starting migration of $TEST_VM from $original_node..."
 
-    log_info "Cordoning $original_node to force migration destination..."
+    # Safety: uncordon everything first to ensure clean state
+    kubectl uncordon k3s-worker1 2>/dev/null || true
+    kubectl uncordon k3s-worker2 2>/dev/null || true
+
+    # Determine destination node
+    local destination_node
+    if [ "$original_node" == "k3s-worker1" ]; then
+        destination_node="k3s-worker2"
+    else
+        destination_node="k3s-worker1"
+    fi
+
+    log_info "Cordoning $original_node to force migration to $destination_node..."
     kubectl cordon "$original_node"
 
-    local start=$(now)
+    local start
+    start=$(now)
 
     virtctl migrate "$TEST_VM"
 
     local elapsed
     elapsed=$(wait_for_migration "$TEST_VM" "$original_node" 600)
+    local exit_code=$?
 
+    # Always uncordon immediately after migration completes or fails
     log_info "Uncordoning $original_node..."
     kubectl uncordon "$original_node"
+
+    if [ $exit_code -ne 0 ]; then
+        log_error "Migration failed or timed out — skipping this run"
+        echo "-1"
+        return 1
+    fi
 
     local new_node
     new_node=$(get_vm_node "$TEST_VM")
@@ -129,7 +150,18 @@ run_migration() {
 
     log_step "Run $run_number / $REPETITIONS ($mode)"
 
-    local http_log="$results_dir/http_run${run_number}_${mode}.csv"
+    # Safety: ensure no nodes are cordoned before starting
+    kubectl uncordon k3s-worker1 2>/dev/null || true
+    kubectl uncordon k3s-worker2 2>/dev/null || true
+
+    # Verify VM is actually migratable before proceeding
+    local migratable
+    migratable=$(kubectl get vmi "$TEST_VM" \
+        -o jsonpath='{.status.conditions[?(@.type=="LiveMigratable")].status}' 2>/dev/null)
+    if [ "$migratable" != "True" ]; then
+        log_warn "VM $TEST_VM is not migratable right now, waiting 15s..."
+        sleep 15
+    fi
 
     take_snapshot "baseline_${mode}_run${run_number}" "$results_dir"
 
