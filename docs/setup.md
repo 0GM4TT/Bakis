@@ -93,9 +93,9 @@ bash configure.sh
 
 # Non-interactive — all values via arguments:
 bash configure.sh \
-  --master-ip 192.168.1.200 \
-  --worker1-ip 192.168.1.201 \
-  --worker2-ip 192.168.1.202 \
+  --master-ip 192.168.1.155 \
+  --worker1-ip 192.168.1.160 \
+  --worker2-ip 192.168.1.103 \
   --username pi \
   --ssh-key "$(cat ~/.ssh/ansible_id.pub)" \
   --grafana-pass mysecretpassword
@@ -114,6 +114,7 @@ bash configure.sh --dry-run
 | `experiments/scenarios/00_common.sh` | Pi IPs and node_exporter endpoints |
 | `show_cluster_info.sh` | Pi IPs and SSH username |
 | `manifests/monitoring/grafana-dashboard-configmap.yaml` | All hardcoded Pi IPs in dashboard queries |
+| `manifests/vms/webserver.py` | Prometheus URL inside VM web server |
 | `manifests/vms/ubuntu-vm-1.yaml` | SSH public key |
 | `manifests/vms/ubuntu-vm-2.yaml` | SSH public key |
 | `playbooks/04_monitoring.yml` | Grafana admin password |
@@ -743,7 +744,7 @@ git remote set-url origin https://NEW_TOKEN@github.com/YOUR_USERNAME/pi-cluster-
 ## Setup Checklist
 
 - [ ] All three Pis flashed with unique hostnames
-- [ ] All three Pis have static IPs (.200, .201, .202)
+- [ ] All three Pis have static IPs (.155, .160, .103)
 - [ ] Only `eth0-static` profile on each Pi — no `netplan-eth0` leftover
 - [ ] Each Pi survives reboot on correct static IP
 - [ ] CentOS VM in Bridged networking mode with `192.168.50.x` IP
