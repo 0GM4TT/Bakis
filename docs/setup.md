@@ -77,9 +77,9 @@ ip route | grep default
 ```
 
 The Pi nodes will be assigned these static IPs (adjust the first three numbers to match your network):
-- `k3s-master` → `192.168.50.200`
-- `k3s-worker1` → `192.168.50.201`
-- `k3s-worker2` → `192.168.50.202`
+- `k3s-master` → `192.168.1.155`
+- `k3s-worker1` → `192.168.1.160`
+- `k3s-worker2` → `192.168.1.103`
 
 These high numbers are chosen deliberately to avoid the router's DHCP pool.
 
@@ -137,11 +137,11 @@ If you prefer to edit files manually, here is every location that needs updating
 **`inventory/hosts.ini`** — Pi IPs and username:
 ```ini
 [master]
-k3s-master ansible_host=192.168.50.200    # ← your master IP
+k3s-master ansible_host=192.168.1.155    # ← your master IP
 
 [workers]
-k3s-worker1 ansible_host=192.168.50.201   # ← your worker1 IP
-k3s-worker2 ansible_host=192.168.50.202   # ← your worker2 IP
+k3s-worker1 ansible_host=192.168.1.160   # ← your worker1 IP
+k3s-worker2 ansible_host=192.168.1.103   # ← your worker2 IP
 
 [cluster:vars]
 ansible_user=msm                          # ← your Pi username
@@ -159,19 +159,19 @@ grafana_password: "admin123"   # ← change to something secure
 
 **`setup-jumphost.sh`** — Pi IPs in /etc/hosts section near the bottom of the file:
 ```bash
-echo "192.168.50.200 k3s-master
-192.168.50.201 k3s-worker1
-192.168.50.202 k3s-worker2"
+echo "192.168.1.155 k3s-master
+192.168.1.160 k3s-worker1
+192.168.1.103 k3s-worker2"
 ```
 
 **`experiments/scenarios/00_common.sh`** — Pi IPs at top of file:
 ```bash
-MASTER_IP="192.168.50.200"
-WORKER1_IP="192.168.50.201"
-WORKER2_IP="192.168.50.202"
+MASTER_IP="192.168.1.155"
+WORKER1_IP="192.168.1.160"
+WORKER2_IP="192.168.1.103"
 ```
 
-**`manifests/monitoring/grafana-dashboard-configmap.yaml`** — Pi IPs appear many times inside Prometheus query strings. Use VS Code find and replace (`Ctrl+H`) to replace all occurrences of `192.168.50.200`, `192.168.50.201`, `192.168.50.202` with your actual IPs.
+**`manifests/monitoring/grafana-dashboard-configmap.yaml`** — Pi IPs appear many times inside Prometheus query strings. Use VS Code find and replace (`Ctrl+H`) to replace all occurrences of `192.168.1.155`, `192.168.1.160`, `192.168.1.103` with your actual IPs.
 
 **`manifests/vms/ubuntu-vm-1.yaml` and `ubuntu-vm-2.yaml`** — SSH public key (do this after Step 5):
 ```yaml
@@ -248,7 +248,7 @@ The IP shown (e.g. `192.168.50.1`) is your router. Use it in the commands below.
 sudo nmcli connection add con-name eth0-static \
   ifname eth0 type ethernet \
   ipv4.method manual \
-  ipv4.addresses 192.168.50.200/24 \
+  ipv4.addresses 192.168.1.155/24 \
   ipv4.gateway 192.168.50.1 \
   ipv4.dns 192.168.50.1
 
@@ -257,7 +257,7 @@ sudo nmcli connection up eth0-static
 
 SSH session will drop. Reconnect:
 ```bash
-ssh YOUR_USERNAME@192.168.50.200
+ssh YOUR_USERNAME@192.168.1.155
 ```
 
 ### 5.4 — Set Static IP on k3s-worker1
@@ -266,14 +266,14 @@ ssh YOUR_USERNAME@192.168.50.200
 sudo nmcli connection add con-name eth0-static \
   ifname eth0 type ethernet \
   ipv4.method manual \
-  ipv4.addresses 192.168.50.201/24 \
+  ipv4.addresses 192.168.1.160/24 \
   ipv4.gateway 192.168.50.1 \
   ipv4.dns 192.168.50.1
 
 sudo nmcli connection up eth0-static
 ```
 
-Reconnect on `192.168.50.201`.
+Reconnect on `192.168.1.160`.
 
 ### 5.5 — Set Static IP on k3s-worker2
 
@@ -281,14 +281,14 @@ Reconnect on `192.168.50.201`.
 sudo nmcli connection add con-name eth0-static \
   ifname eth0 type ethernet \
   ipv4.method manual \
-  ipv4.addresses 192.168.50.202/24 \
+  ipv4.addresses 192.168.1.103/24 \
   ipv4.gateway 192.168.50.1 \
   ipv4.dns 192.168.50.1
 
 sudo nmcli connection up eth0-static
 ```
 
-Reconnect on `192.168.50.202`.
+Reconnect on `192.168.1.103`.
 
 ### 5.6 — Remove Old DHCP Profiles (CRITICAL)
 
@@ -342,7 +342,7 @@ Reboot to confirm persistence:
 ```bash
 sudo reboot
 # After reboot, reconnect on static IP to confirm it worked
-ssh YOUR_USERNAME@192.168.50.200
+ssh YOUR_USERNAME@192.168.1.155
 ```
 
 Repeat verification for all three Pis.
@@ -386,9 +386,9 @@ ip addr show
 ### 6.3 — Verify Connectivity
 
 ```bash
-ping -c 3 192.168.50.200
-ping -c 3 192.168.50.201
-ping -c 3 192.168.50.202
+ping -c 3 192.168.1.155
+ping -c 3 192.168.1.160
+ping -c 3 192.168.1.103
 ```
 
 All should respond before continuing.
@@ -432,9 +432,9 @@ The script will prompt for each value interactively. If you already know all you
 
 ```bash
 bash configure.sh \
-  --master-ip 192.168.50.200 \
-  --worker1-ip 192.168.50.201 \
-  --worker2-ip 192.168.50.202 \
+  --master-ip 192.168.1.155 \
+  --worker1-ip 192.168.1.160 \
+  --worker2-ip 192.168.1.103 \
   --username YOUR_USERNAME \
   --ssh-key "$(cat ~/.ssh/ansible_id.pub)" \
   --grafana-pass YOUR_PASSWORD
@@ -572,7 +572,7 @@ kubectl get storageclass    # longhorn should be (default)
 ansible-playbook playbooks/04_monitoring.yml
 ```
 
-**Verify:** Open `http://192.168.50.200:32000` in browser. Login: `admin` / your password.
+**Verify:** Open `http://192.168.1.155:32000` in browser. Login: `admin` / your password.
 
 ---
 
@@ -615,19 +615,19 @@ kubectl get vmi -o wide
 kubectl get volumes.longhorn.io -n longhorn-system
 
 # SSH into VMs
-ssh -i ~/.ssh/ansible_id -p 30001 ubuntu@192.168.50.200
-ssh -i ~/.ssh/ansible_id -p 30002 ubuntu@192.168.50.200
+ssh -i ~/.ssh/ansible_id -p 30001 ubuntu@192.168.1.155
+ssh -i ~/.ssh/ansible_id -p 30002 ubuntu@192.168.1.155
 ```
 
 **Open in browser:**
 
 | URL | What you should see |
 |-----|---------------------|
-| `http://192.168.50.200:32000` | Grafana login page |
-| `http://192.168.50.200:30090` | Longhorn dashboard |
-| `http://192.168.50.200:30091` | Prometheus targets |
-| `http://192.168.50.200:30011` | Hello from ubuntu-vm-1 |
-| `http://192.168.50.200:30012` | Hello from ubuntu-vm-2 |
+| `http://192.168.1.155:32000` | Grafana login page |
+| `http://192.168.1.155:30090` | Longhorn dashboard |
+| `http://192.168.1.155:30091` | Prometheus targets |
+| `http://192.168.1.155:30011` | Hello from ubuntu-vm-1 |
+| `http://192.168.1.155:30012` | Hello from ubuntu-vm-2 |
 
 ---
 
@@ -709,7 +709,7 @@ sudo firewall-cmd --add-service=mdns --permanent && sudo firewall-cmd --reload
 ### "No route to host" on VM ports (30001, 30011 etc.)
 nftables proxy mode not active. Verify:
 ```bash
-ssh YOUR_USER@192.168.50.200 "sudo journalctl -u k3s | grep 'proxy-mode' | tail -3"
+ssh YOUR_USER@192.168.1.155 "sudo journalctl -u k3s | grep 'proxy-mode' | tail -3"
 # Should show: Using nftables Proxier
 ```
 
