@@ -40,7 +40,6 @@
 #   - http_monitor_*.csv     — HTTP availability during migration
 # =============================================================================
 
-set -e
 source "$(dirname "$0")/00_common.sh"
 
 # =============================================================================
@@ -92,25 +91,21 @@ trigger_and_wait_migration() {
     fi
 
     log_info "Cordoning $original_node to force migration to $destination_node..."
-    kubectl cordon "$original_node"
+    kubectl cordon "$original_node" || true
 
-    local start
-    start=$(now)
-
-    virtctl migrate "$TEST_VM"
+    virtctl migrate "$TEST_VM" || true
 
     local elapsed
-    elapsed=$(wait_for_migration "$TEST_VM" "$original_node" 600)
-    local exit_code=$?
+    elapsed=$(wait_for_migration "$TEST_VM" "$original_node" 600) || elapsed="-1"
 
     # Always uncordon immediately after migration completes or fails
     log_info "Uncordoning $original_node..."
-    kubectl uncordon "$original_node"
+    kubectl uncordon "$original_node" || true
 
-    if [ $exit_code -ne 0 ]; then
+    if [ "$elapsed" == "-1" ]; then
         log_error "Migration failed or timed out — skipping this run"
         echo "-1"
-        return 1
+        return 0
     fi
 
     local new_node
@@ -118,6 +113,7 @@ trigger_and_wait_migration() {
     log_info "Migration complete: $original_node → $new_node in ${elapsed}s"
 
     echo "$elapsed"
+    return 0
 }
 
 count_http_failures() {
@@ -157,7 +153,7 @@ run_migration() {
     # Verify VM is actually migratable before proceeding
     local migratable
     migratable=$(kubectl get vmi "$TEST_VM" \
-        -o jsonpath='{.status.conditions[?(@.type=="LiveMigratable")].status}' 2>/dev/null)
+        -o jsonpath='{.status.conditions[?(@.type=="LiveMigratable")].status}' 2>/dev/null) || migratable=""
     if [ "$migratable" != "True" ]; then
         log_warn "VM $TEST_VM is not migratable right now, waiting 15s..."
         sleep 15
@@ -165,18 +161,19 @@ run_migration() {
 
     local http_log="$results_dir/http_run${run_number}_${mode}.csv"
 
-    take_snapshot "baseline_${mode}_run${run_number}" "$results_dir"
+    take_snapshot "baseline_${mode}_run${run_number}" "$results_dir" || true
 
     # Start HTTP monitor in background
-    local http_pid
     (
         echo "timestamp,status,response_time_ms" > "$http_log"
         while true; do
-            local start_ms=$(date +%s%3N)
+            local start_ms
+            start_ms=$(date +%s%3N)
             local http_code
             http_code=$(curl -s -o /dev/null -w "%{http_code}" \
-                --connect-timeout 2 --max-time 3 "$TEST_VM_HTTP" 2>/dev/null)
-            local end_ms=$(date +%s%3N)
+                --connect-timeout 2 --max-time 3 "$TEST_VM_HTTP" 2>/dev/null) || http_code="000"
+            local end_ms
+            end_ms=$(date +%s%3N)
             local rt=$((end_ms - start_ms))
             if [[ "$http_code" == "200" ]]; then
                 echo "$(now),OK,$rt" >> "$http_log"
@@ -186,13 +183,13 @@ run_migration() {
             sleep 1
         done
     ) &
-    http_pid=$!
+    local http_pid=$!
 
-    # Start metrics collection — avoid $() subshell which blocks on background processes
+    # Start metrics collection avoiding $() subshell hang
     local metrics_pid_file="/tmp/metrics_pid_${run_number}_${mode}.tmp"
     (
         while true; do
-            take_snapshot "running" "$results_dir"
+            take_snapshot "running" "$results_dir" || true
             sleep 5
         done
     ) &
@@ -202,20 +199,24 @@ run_migration() {
 
     sleep 3
 
-    # Trigger migration — also avoid $() subshell for same reason
+    # Trigger migration avoiding $() subshell hang
     local migration_elapsed_file="/tmp/migration_elapsed_${run_number}_${mode}.tmp"
-    trigger_and_wait_migration > "$migration_elapsed_file"
+    echo "-1" > "$migration_elapsed_file"
+    trigger_and_wait_migration > "$migration_elapsed_file" || true
     local migration_elapsed
     migration_elapsed=$(cat "$migration_elapsed_file")
 
     sleep 5
-    take_snapshot "post_migration_${mode}_run${run_number}" "$results_dir"
+    take_snapshot "post_migration_${mode}_run${run_number}" "$results_dir" || true
 
-    kill "$http_pid" 2>/dev/null; wait "$http_pid" 2>/dev/null || true
-    kill "$metrics_pid" 2>/dev/null; wait "$metrics_pid" 2>/dev/null || true
+    # Clean up background processes
+    kill "$http_pid" 2>/dev/null || true
+    wait "$http_pid" 2>/dev/null || true
+    kill "$metrics_pid" 2>/dev/null || true
+    wait "$metrics_pid" 2>/dev/null || true
     rm -f "$metrics_pid_file" "$migration_elapsed_file"
 
-    record_timing "$results_dir" "${mode}_run${run_number}_migration_duration" "$migration_elapsed"
+    record_timing "$results_dir" "${mode}_run${run_number}_migration_duration" "$migration_elapsed" || true
 
     local failures
     failures=$(count_http_failures "$http_log")
@@ -223,6 +224,8 @@ run_migration() {
 
     log_info "Waiting ${BETWEEN_RUNS_WAIT}s before next run..."
     sleep "$BETWEEN_RUNS_WAIT"
+
+    return 0
 }
 
 # =============================================================================
@@ -231,7 +234,7 @@ run_migration() {
 
 main() {
     # Safety cleanup — uncordon all nodes if script exits for any reason
-    trap 'kubectl uncordon k3s-worker1 2>/dev/null; kubectl uncordon k3s-worker2 2>/dev/null' EXIT
+    trap 'kubectl uncordon k3s-worker1 2>/dev/null || true; kubectl uncordon k3s-worker2 2>/dev/null || true' EXIT
 
     log_step "Scenario 2: Live Migration Testing"
     log_info "This scenario measures VM live migration duration and HTTP"
@@ -267,7 +270,7 @@ EOF
     mkdir -p "$unloaded_dir"
 
     for i in $(seq 1 "$REPETITIONS"); do
-        run_migration "$i" "unloaded" "$unloaded_dir"
+        run_migration "$i" "unloaded" "$unloaded_dir" || true
     done
 
     print_timing_summary "$unloaded_dir"
@@ -278,31 +281,32 @@ EOF
     mkdir -p "$loaded_dir"
 
     for i in $(seq 1 "$REPETITIONS"); do
-        start_vm_load "$TEST_VM" "$TEST_VM_SSH_PORT"
+        start_vm_load "$TEST_VM" "$TEST_VM_SSH_PORT" || true
         sleep 10
 
-        run_migration "$i" "loaded" "$loaded_dir"
+        run_migration "$i" "loaded" "$loaded_dir" || true
 
-        stop_vm_load "$TEST_VM" "$TEST_VM_SSH_PORT"
+        stop_vm_load "$TEST_VM" "$TEST_VM_SSH_PORT" || true
         sleep 5
     done
 
     print_timing_summary "$loaded_dir"
 
     log_step "Exporting detailed metrics..."
-    local end_ts=$(now)
+    local end_ts
+    end_ts=$(now)
     local start_ts=$((end_ts - 7200))
 
     for dir in "$unloaded_dir" "$loaded_dir"; do
         export_metrics_to_csv \
             "100 - (avg(rate(node_cpu_seconds_total{mode='idle'}[1m])) * 100)" \
             "$start_ts" "$end_ts" 15 \
-            "$dir/cpu_timeseries.csv" "cpu_pct"
+            "$dir/cpu_timeseries.csv" "cpu_pct" || true
 
         export_metrics_to_csv \
             "rate(node_network_transmit_bytes_total{device='eth0'}[1m])" \
             "$start_ts" "$end_ts" 15 \
-            "$dir/network_timeseries.csv" "net_tx_bytes_per_sec"
+            "$dir/network_timeseries.csv" "net_tx_bytes_per_sec" || true
     done
 
     log_step "All migration tests complete!"
@@ -311,10 +315,10 @@ EOF
     echo ""
     log_step "COMPARISON SUMMARY"
     echo "Unloaded migrations:"
-    grep "migration_duration" "$unloaded_dir/timing_summary.csv" | column -t -s','
+    grep "migration_duration" "$unloaded_dir/timing_summary.csv" | column -t -s',' || true
     echo ""
     echo "Loaded migrations:"
-    grep "migration_duration" "$loaded_dir/timing_summary.csv" | column -t -s','
+    grep "migration_duration" "$loaded_dir/timing_summary.csv" | column -t -s',' || true
 }
 
 main "$@"
