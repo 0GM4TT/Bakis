@@ -76,13 +76,11 @@ ensure_stress_ng() {
 trigger_and_wait_migration() {
     local original_node
     original_node=$(get_vm_node "$TEST_VM")
-    log_info "Starting migration of $TEST_VM from $original_node..."
+    echo "[INFO] $(date '+%H:%M:%S') Starting migration of $TEST_VM from $original_node..." >&2
 
-    # Safety: uncordon everything first to ensure clean state
     kubectl uncordon k3s-worker1 2>/dev/null || true
     kubectl uncordon k3s-worker2 2>/dev/null || true
 
-    # Determine destination node
     local destination_node
     if [ "$original_node" == "k3s-worker1" ]; then
         destination_node="k3s-worker2"
@@ -90,7 +88,7 @@ trigger_and_wait_migration() {
         destination_node="k3s-worker1"
     fi
 
-    log_info "Cordoning $original_node to force migration to $destination_node..."
+    echo "[INFO] $(date '+%H:%M:%S') Cordoning $original_node to force migration to $destination_node..." >&2
     kubectl cordon "$original_node" || true
 
     virtctl migrate "$TEST_VM" || true
@@ -98,19 +96,18 @@ trigger_and_wait_migration() {
     local elapsed
     elapsed=$(wait_for_migration "$TEST_VM" "$original_node" 600) || elapsed="-1"
 
-    # Always uncordon immediately after migration completes or fails
-    log_info "Uncordoning $original_node..."
+    echo "[INFO] $(date '+%H:%M:%S') Uncordoning $original_node..." >&2
     kubectl uncordon "$original_node" || true
 
     if [ "$elapsed" == "-1" ]; then
-        log_error "Migration failed or timed out — skipping this run"
+        echo "[ERROR] $(date '+%H:%M:%S') Migration failed or timed out — skipping this run" >&2
         echo "-1"
         return 0
     fi
 
     local new_node
     new_node=$(get_vm_node "$TEST_VM")
-    log_info "Migration complete: $original_node → $new_node in ${elapsed}s"
+    echo "[INFO] $(date '+%H:%M:%S') Migration complete: $original_node → $new_node in ${elapsed}s" >&2
 
     echo "$elapsed"
     return 0
