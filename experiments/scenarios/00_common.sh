@@ -263,6 +263,7 @@ take_snapshot() {
 start_metrics_collection() {
     local results_dir=$1
     local interval=${2:-5}
+    local pid_file="/tmp/metrics_collection.pid"
 
     (
         while true; do
@@ -271,6 +272,7 @@ start_metrics_collection() {
         done
     ) &
 
+    echo $! > "$pid_file"
     echo $!
 }
 
