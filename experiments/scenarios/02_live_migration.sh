@@ -2,6 +2,7 @@
 # =============================================================================
 # 02_live_migration.sh
 # Scenario 2: Live Migration Testing
+# =============================================================================
 #
 # WHAT THIS TESTS:
 #   How long does live migration take, and how much HTTP downtime occurs,
@@ -51,15 +52,12 @@ TEST_VM_HTTP="$VM1_HTTP"
 TEST_VM_SSH_PORT="$VM1_SSH_PORT"
 
 REPETITIONS=10
-
-# Wait between migration runs (seconds)
 BETWEEN_RUNS_WAIT=30
 
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
 
-# Ensure stress-ng is installed inside VM
 ensure_stress_ng() {
     log_info "Checking if stress-ng is installed in $TEST_VM..."
     local result
@@ -76,21 +74,23 @@ ensure_stress_ng() {
     fi
 }
 
-# Trigger migration and wait for completion
-# Returns migration duration in seconds
 trigger_and_wait_migration() {
     local original_node
     original_node=$(get_vm_node "$TEST_VM")
     log_info "Starting migration of $TEST_VM from $original_node..."
 
+    log_info "Cordoning $original_node to force migration destination..."
+    kubectl cordon "$original_node"
+
     local start=$(now)
 
-    # Trigger migration
     virtctl migrate "$TEST_VM"
 
-    # Wait for completion
     local elapsed
     elapsed=$(wait_for_migration "$TEST_VM" "$original_node" 600)
+
+    log_info "Uncordoning $original_node..."
+    kubectl uncordon "$original_node"
 
     local new_node
     new_node=$(get_vm_node "$TEST_VM")
@@ -99,7 +99,6 @@ trigger_and_wait_migration() {
     echo "$elapsed"
 }
 
-# Count HTTP failures from monitor log
 count_http_failures() {
     local log_file=$1
     if [ -f "$log_file" ]; then
@@ -125,17 +124,15 @@ print(f'{fails}/{total}')
 
 run_migration() {
     local run_number=$1
-    local mode=$2        # "unloaded" or "loaded"
+    local mode=$2
     local results_dir=$3
 
     log_step "Run $run_number / $REPETITIONS ($mode)"
 
     local http_log="$results_dir/http_run${run_number}_${mode}.csv"
 
-    # Take baseline snapshot
     take_snapshot "baseline_${mode}_run${run_number}" "$results_dir"
 
-    # Start HTTP monitoring
     local http_pid
     (
         echo "timestamp,status,response_time_ms" > "$http_log"
@@ -156,33 +153,26 @@ run_migration() {
     ) &
     http_pid=$!
 
-    # Start metrics collection
     local metrics_pid
     metrics_pid=$(start_metrics_collection "$results_dir" 5)
 
-    # Wait a moment for monitoring to start
     sleep 3
 
-    # Trigger migration and measure time
     local migration_elapsed
     migration_elapsed=$(trigger_and_wait_migration)
 
-    # Take post-migration snapshot
     sleep 5
     take_snapshot "post_migration_${mode}_run${run_number}" "$results_dir"
 
-    # Stop monitoring
     kill "$http_pid" 2>/dev/null; wait "$http_pid" 2>/dev/null || true
     stop_metrics_collection "$metrics_pid"
 
-    # Record results
     record_timing "$results_dir" "${mode}_run${run_number}_migration_duration" "$migration_elapsed"
 
     local failures
     failures=$(count_http_failures "$http_log")
     log_info "Run $run_number ($mode): duration=${migration_elapsed}s, HTTP failures=${failures}"
 
-    # Wait between runs
     log_info "Waiting ${BETWEEN_RUNS_WAIT}s before next run..."
     sleep "$BETWEEN_RUNS_WAIT"
 }
@@ -192,6 +182,9 @@ run_migration() {
 # =============================================================================
 
 main() {
+    # Safety cleanup — uncordon all nodes if script exits for any reason
+    trap 'kubectl uncordon k3s-worker1 2>/dev/null; kubectl uncordon k3s-worker2 2>/dev/null' EXIT
+
     log_step "Scenario 2: Live Migration Testing"
     log_info "This scenario measures VM live migration duration and HTTP"
     log_info "availability impact under both idle and loaded conditions."
@@ -210,7 +203,6 @@ main() {
     results_dir=$(init_results_dir "02_live_migration")
     log_info "Results will be saved to: $results_dir"
 
-    # Write config
     cat > "$results_dir/scenario_config.txt" << EOF
 Scenario: Live Migration Testing
 Date: $(now_human)
@@ -219,12 +211,9 @@ Repetitions per condition: $REPETITIONS
 Conditions: unloaded, loaded
 EOF
 
-    # Ensure stress-ng is available
     ensure_stress_ng
 
-    # -------------------------
     # Part A: Unloaded migration
-    # -------------------------
     log_step "Part A: Unloaded Migration (${REPETITIONS} runs)"
     local unloaded_dir="$results_dir/unloaded"
     mkdir -p "$unloaded_dir"
@@ -235,28 +224,23 @@ EOF
 
     print_timing_summary "$unloaded_dir"
 
-    # -------------------------
     # Part B: Loaded migration
-    # -------------------------
     log_step "Part B: Loaded Migration (${REPETITIONS} runs)"
     local loaded_dir="$results_dir/loaded"
     mkdir -p "$loaded_dir"
 
     for i in $(seq 1 "$REPETITIONS"); do
-        # Start load before migration
         start_vm_load "$TEST_VM" "$TEST_VM_SSH_PORT"
-        sleep 10  # Let load stabilize
+        sleep 10
 
         run_migration "$i" "loaded" "$loaded_dir"
 
-        # Stop load after migration
         stop_vm_load "$TEST_VM" "$TEST_VM_SSH_PORT"
         sleep 5
     done
 
     print_timing_summary "$loaded_dir"
 
-    # Export time series metrics
     log_step "Exporting detailed metrics..."
     local end_ts=$(now)
     local start_ts=$((end_ts - 7200))
@@ -276,7 +260,6 @@ EOF
     log_step "All migration tests complete!"
     log_info "Results saved to: $results_dir"
 
-    # Print comparison summary
     echo ""
     log_step "COMPARISON SUMMARY"
     echo "Unloaded migrations:"
