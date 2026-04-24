@@ -192,4 +192,4 @@
 
     - name: Show Grafana access info
       ansible.builtin.debug:
-        msg: "Grafana available at http://192.168.50.200:{{ grafana_port.stdout }} - login: admin / {{ grafana_password }}"
+        msg: "Grafana available at http://192.168.1.155:{{ grafana_port.stdout }} - login: admin / {{ grafana_password }}"
