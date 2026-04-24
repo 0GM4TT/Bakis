@@ -92,6 +92,15 @@
         state: stopped
       ignore_errors: true
 
+    - name: Update Prometheus URL in webserver.py
+      ansible.builtin.replace:
+        path: "{{ playbook_dir }}/../manifests/vms/webserver.py"
+        regexp: 'PROMETHEUS_URL = "http://[^"]*"'
+        replace: 'PROMETHEUS_URL = "http://{{ hostvars["k3s-master"]["ansible_host"] }}:30091"'
+      delegate_to: localhost
+      become: false
+      run_once: true
+
     - name: Copy web server script
       ansible.builtin.copy:
         src: "{{ playbook_dir }}/../manifests/vms/webserver.py"
