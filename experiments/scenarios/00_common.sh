@@ -11,11 +11,11 @@
 # Edit these values to match your cluster setup
 # =============================================================================
 
-PROMETHEUS_URL="http://192.168.50.200:30091"
+PROMETHEUS_URL="http://192.168.1.155:30091"
 MASTER_IP="192.168.1.155"
 WORKER1_IP="192.168.1.160"
 WORKER2_IP="192.168.1.103"
-MASTER_USER="msm"
+MASTER_USER="bakalauras"
 SSH_KEY="$HOME/.ssh/ansible_id"
 RESULTS_DIR="$(dirname "$0")/../results"
 
@@ -25,8 +25,8 @@ WORKER1_INSTANCE="192.168.1.160:9100"
 WORKER2_INSTANCE="192.168.1.103:9100"
 
 # VM NodePort endpoints
-VM1_HTTP="http://192.168.50.200:30011"
-VM2_HTTP="http://192.168.50.200:30012"
+VM1_HTTP="http://192.168.1.155:30011"
+VM2_HTTP="http://192.168.1.155:30012"
 VM1_SSH_PORT="30001"
 VM2_SSH_PORT="30002"
 
@@ -106,7 +106,7 @@ init_results_dir() {
 # =============================================================================
 
 # Query Prometheus for a single instant value
-# Usage: prom_query "node_memory_MemAvailable_bytes{instance='192.168.50.200:9100'}"
+# Usage: prom_query "node_memory_MemAvailable_bytes{instance='192.168.1.155:9100'}"
 # Returns: numeric value
 prom_query() {
     local query=$1
@@ -147,14 +147,14 @@ prom_query_range() {
 # =============================================================================
 
 # Get CPU usage percentage for a node (averaged over last 1 minute)
-# Usage: get_cpu_usage "192.168.50.200:9100"
+# Usage: get_cpu_usage "192.168.1.155:9100"
 get_cpu_usage() {
     local instance=$1
     prom_query "100 - (avg(rate(node_cpu_seconds_total{mode='idle',instance='${instance}'}[1m])) * 100)"
 }
 
 # Get RAM usage percentage for a node
-# Usage: get_ram_usage "192.168.50.200:9100"
+# Usage: get_ram_usage "192.168.1.155:9100"
 get_ram_usage() {
     local instance=$1
     local total
@@ -169,7 +169,7 @@ get_ram_usage() {
 }
 
 # Get network receive rate in KB/s for a node
-# Usage: get_net_rx "192.168.50.200:9100"
+# Usage: get_net_rx "192.168.1.155:9100"
 get_net_rx() {
     local instance=$1
     local bytes
@@ -182,7 +182,7 @@ get_net_rx() {
 }
 
 # Get network transmit rate in KB/s for a node
-# Usage: get_net_tx "192.168.50.200:9100"
+# Usage: get_net_tx "192.168.1.155:9100"
 get_net_tx() {
     local instance=$1
     local bytes
@@ -195,7 +195,7 @@ get_net_tx() {
 }
 
 # Get disk read rate in KB/s for a node
-# Usage: get_disk_read "192.168.50.200:9100"
+# Usage: get_disk_read "192.168.1.155:9100"
 get_disk_read() {
     local instance=$1
     local bytes
@@ -208,7 +208,7 @@ get_disk_read() {
 }
 
 # Get disk write rate in KB/s for a node
-# Usage: get_disk_write "192.168.50.200:9100"
+# Usage: get_disk_write "192.168.1.155:9100"
 get_disk_write() {
     local instance=$1
     local bytes
@@ -291,7 +291,7 @@ stop_metrics_collection() {
 # =============================================================================
 
 # Monitor HTTP endpoint continuously in background
-# Usage: start_http_monitor "http://192.168.50.200:30011" results_dir
+# Usage: start_http_monitor "http://192.168.1.155:30011" results_dir
 # Returns: PID of background process
 start_http_monitor() {
     local url=$1
