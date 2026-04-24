@@ -15,7 +15,7 @@
 #   --master-ip       IP address for k3s-master        (default: 192.168.1.155)
 #   --worker1-ip      IP address for k3s-worker1       (default: 192.168.1.160)
 #   --worker2-ip      IP address for k3s-worker2       (default: 192.168.1.103)
-#   --username        Pi OS username                    (default: msm)
+#   --username        Pi OS username                    (default: bakalauras)
 #   --ssh-key         Ansible SSH public key            (from ~/.ssh/ansible_id.pub)
 #   --grafana-pass    Grafana admin password            (default: admin123)
 #   --dry-run         Show what would be changed without making changes
@@ -56,7 +56,7 @@ set -e
 DEFAULT_MASTER_IP="192.168.1.155"
 DEFAULT_WORKER1_IP="192.168.1.160"
 DEFAULT_WORKER2_IP="192.168.1.103"
-DEFAULT_USERNAME="msm"
+DEFAULT_USERNAME="bakalauras"
 DEFAULT_GRAFANA_PASS="admin123"
 
 # Colors
@@ -404,7 +404,7 @@ sed_replace "show_cluster_info.sh" \
     "Updated worker2 IP references"
 
 sed_replace "show_cluster_info.sh" \
-    "msm@" \
+    "bakalauras@" \
     "${USERNAME}@" \
     "Updated SSH username"
 
