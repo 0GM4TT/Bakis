@@ -167,6 +167,7 @@ run_migration() {
 
     take_snapshot "baseline_${mode}_run${run_number}" "$results_dir"
 
+    # Start HTTP monitor in background
     local http_pid
     (
         echo "timestamp,status,response_time_ms" > "$http_log"
@@ -187,19 +188,32 @@ run_migration() {
     ) &
     http_pid=$!
 
+    # Start metrics collection — avoid $() subshell which blocks on background processes
+    local metrics_pid_file="/tmp/metrics_pid_${run_number}_${mode}.tmp"
+    (
+        while true; do
+            take_snapshot "running" "$results_dir"
+            sleep 5
+        done
+    ) &
+    echo $! > "$metrics_pid_file"
     local metrics_pid
-    metrics_pid=$(start_metrics_collection "$results_dir" 5)
+    metrics_pid=$(cat "$metrics_pid_file")
 
     sleep 3
 
+    # Trigger migration — also avoid $() subshell for same reason
+    local migration_elapsed_file="/tmp/migration_elapsed_${run_number}_${mode}.tmp"
+    trigger_and_wait_migration > "$migration_elapsed_file"
     local migration_elapsed
-    migration_elapsed=$(trigger_and_wait_migration)
+    migration_elapsed=$(cat "$migration_elapsed_file")
 
     sleep 5
     take_snapshot "post_migration_${mode}_run${run_number}" "$results_dir"
 
     kill "$http_pid" 2>/dev/null; wait "$http_pid" 2>/dev/null || true
-    stop_metrics_collection "$metrics_pid"
+    kill "$metrics_pid" 2>/dev/null; wait "$metrics_pid" 2>/dev/null || true
+    rm -f "$metrics_pid_file" "$migration_elapsed_file"
 
     record_timing "$results_dir" "${mode}_run${run_number}_migration_duration" "$migration_elapsed"
 
