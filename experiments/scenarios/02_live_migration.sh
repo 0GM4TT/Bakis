@@ -163,6 +163,8 @@ run_migration() {
         sleep 15
     fi
 
+    local http_log="$results_dir/http_run${run_number}_${mode}.csv"
+
     take_snapshot "baseline_${mode}_run${run_number}" "$results_dir"
 
     local http_pid
