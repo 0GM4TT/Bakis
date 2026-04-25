@@ -78,9 +78,11 @@ trigger_and_wait_migration() {
     original_node=$(get_vm_node "$TEST_VM")
     echo "[INFO] $(date '+%H:%M:%S') Starting migration of $TEST_VM from $original_node..." >&2
 
-    kubectl uncordon k3s-worker1 2>/dev/null || true
-    kubectl uncordon k3s-worker2 2>/dev/null || true
+    # Safety: uncordon everything first to ensure clean state
+    kubectl uncordon k3s-worker1 >/dev/null 2>&1 || true
+    kubectl uncordon k3s-worker2 >/dev/null 2>&1 || true
 
+    # Determine destination node
     local destination_node
     if [ "$original_node" == "k3s-worker1" ]; then
         destination_node="k3s-worker2"
@@ -89,15 +91,19 @@ trigger_and_wait_migration() {
     fi
 
     echo "[INFO] $(date '+%H:%M:%S') Cordoning $original_node to force migration to $destination_node..." >&2
-    kubectl cordon "$original_node" || true
+    kubectl cordon "$original_node" >/dev/null 2>&1 || true
 
-    virtctl migrate "$TEST_VM" || true
+    virtctl migrate "$TEST_VM" >/dev/null 2>&1 || true
 
     local elapsed
-    elapsed=$(wait_for_migration "$TEST_VM" "$original_node" 600) || elapsed="-1"
+    elapsed=$(wait_for_migration "$TEST_VM" "$original_node" 600 2>/dev/null) || elapsed="-1"
+    
+    # Strip any non-numeric characters as a safety net
+    elapsed=$(echo "$elapsed" | grep -oE '^[0-9]+$' | tail -1)
+    [ -z "$elapsed" ] && elapsed="-1"
 
     echo "[INFO] $(date '+%H:%M:%S') Uncordoning $original_node..." >&2
-    kubectl uncordon "$original_node" || true
+    kubectl uncordon "$original_node" >/dev/null 2>&1 || true
 
     if [ "$elapsed" == "-1" ]; then
         echo "[ERROR] $(date '+%H:%M:%S') Migration failed or timed out — skipping this run" >&2
