@@ -37,7 +37,6 @@
 #   - metrics_snapshots.csv — cluster resource usage during deployment
 # =============================================================================
 
-set -e
 source "$(dirname "$0")/00_common.sh"
 
 # =============================================================================
@@ -62,61 +61,61 @@ BETWEEN_RUNS_WAIT=60
 
 # Delete VM and its PVC to force fresh deployment
 cleanup_test_vm() {
-    log_info "Cleaning up $TEST_VM for fresh deployment..."
+    echo "[INFO] $(date '+%H:%M:%S') Cleaning up $TEST_VM for fresh deployment..." >&2
 
-    # Delete VM
-    kubectl delete vm "$TEST_VM" --ignore-not-found=true
-    kubectl delete vmi "$TEST_VM" --ignore-not-found=true
+    kubectl delete vm "$TEST_VM" --ignore-not-found=true >/dev/null 2>&1 || true
+    kubectl delete vmi "$TEST_VM" --ignore-not-found=true >/dev/null 2>&1 || true
 
     # Wait for VMI to be gone
     local timeout=60
-    local start=$(now)
-    while kubectl get vmi "$TEST_VM" &>/dev/null; do
-        if [ $(($(now) - start)) -gt "$timeout" ]; then
-            log_warn "Timeout waiting for VMI deletion"
-            break
-        fi
-        sleep 2
-    done
-
-    # Delete PVC (forces fresh disk image import)
-    kubectl delete pvc "${TEST_VM}-disk" --ignore-not-found=true
-
-    # Wait for PVC to be gone
+    local start
     start=$(now)
-    while kubectl get pvc "${TEST_VM}-disk" &>/dev/null; do
+    while kubectl get vmi "$TEST_VM" >/dev/null 2>&1; do
         if [ $(($(now) - start)) -gt "$timeout" ]; then
-            log_warn "Timeout waiting for PVC deletion"
+            echo "[WARN] $(date '+%H:%M:%S') Timeout waiting for VMI deletion" >&2
             break
         fi
         sleep 2
     done
 
-    log_info "Cleanup complete"
+    kubectl delete pvc "${TEST_VM}-disk" --ignore-not-found=true >/dev/null 2>&1 || true
+
+    start=$(now)
+    while kubectl get pvc "${TEST_VM}-disk" >/dev/null 2>&1; do
+        if [ $(($(now) - start)) -gt "$timeout" ]; then
+            echo "[WARN] $(date '+%H:%M:%S') Timeout waiting for PVC deletion" >&2
+            break
+        fi
+        sleep 2
+    done
+
+    echo "[INFO] $(date '+%H:%M:%S') Cleanup complete" >&2
     sleep 10
 }
 
 # Wait for DataVolume to be Ready (disk image imported)
+# Echoes only the elapsed seconds to stdout
 wait_for_datavolume() {
     local timeout=600
-    local start=$(now)
-    log_info "Waiting for DataVolume to be ready (disk image import)..."
+    local start
+    start=$(now)
+    echo "[INFO] $(date '+%H:%M:%S') Waiting for DataVolume to be ready..." >&2
 
     while true; do
         local phase
         phase=$(kubectl get datavolume "${TEST_VM}-disk" \
-            -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
+            -o jsonpath='{.status.phase}' 2>/dev/null) || phase="NotFound"
 
         if [ "$phase" == "Succeeded" ]; then
             local elapsed=$(($(now) - start))
-            log_info "DataVolume ready after ${elapsed}s"
+            echo "[INFO] $(date '+%H:%M:%S') DataVolume ready after ${elapsed}s" >&2
             echo "$elapsed"
             return 0
         fi
 
         if [ $(($(now) - start)) -gt "$timeout" ]; then
-            log_error "Timeout waiting for DataVolume"
-            echo "timeout"
+            echo "[ERROR] $(date '+%H:%M:%S') Timeout waiting for DataVolume" >&2
+            echo "-1"
             return 1
         fi
 
@@ -125,32 +124,42 @@ wait_for_datavolume() {
 }
 
 # Wait for VM HTTP endpoint to respond
+# Echoes only the elapsed seconds to stdout
 wait_for_http_ready() {
     local timeout=120
-    local start=$(now)
-    log_info "Waiting for HTTP endpoint to respond..."
+    local start
+    start=$(now)
+    echo "[INFO] $(date '+%H:%M:%S') Waiting for HTTP endpoint to respond..." >&2
 
     while true; do
         local http_code
         http_code=$(curl -s -o /dev/null -w "%{http_code}" \
             --connect-timeout 2 --max-time 3 \
-            "$TEST_VM_HTTP" 2>/dev/null)
+            "$TEST_VM_HTTP" 2>/dev/null) || http_code="000"
 
         if [ "$http_code" == "200" ]; then
             local elapsed=$(($(now) - start))
-            log_info "HTTP ready after ${elapsed}s"
+            echo "[INFO] $(date '+%H:%M:%S') HTTP ready after ${elapsed}s" >&2
             echo "$elapsed"
             return 0
         fi
 
         if [ $(($(now) - start)) -gt "$timeout" ]; then
-            log_warn "Timeout waiting for HTTP — VM may need more time"
-            echo "timeout"
+            echo "[WARN] $(date '+%H:%M:%S') Timeout waiting for HTTP" >&2
+            echo "-1"
             return 1
         fi
 
         sleep 3
     done
+}
+
+# Helper: ensure value is a clean integer or -1
+sanitize_number() {
+    local val="$1"
+    val=$(echo "$val" | grep -oE '^[0-9]+$' | tail -1)
+    [ -z "$val" ] && val="-1"
+    echo "$val"
 }
 
 # =============================================================================
@@ -163,59 +172,87 @@ run_spinup() {
 
     log_step "Run $run_number / $REPETITIONS"
 
-    # Start metrics collection
+    # Start metrics collection — avoid $() subshell which blocks on background processes
+    local metrics_pid_file="/tmp/metrics_pid_spinup_${run_number}.tmp"
+    (
+        while true; do
+            take_snapshot "running" "$results_dir" >/dev/null 2>&1 || true
+            sleep 5
+        done
+    ) &
+    echo $! > "$metrics_pid_file"
     local metrics_pid
-    metrics_pid=$(start_metrics_collection "$results_dir" 5)
+    metrics_pid=$(cat "$metrics_pid_file")
 
     # Take pre-deployment snapshot
-    take_snapshot "pre_deploy_run${run_number}" "$results_dir"
+    take_snapshot "pre_deploy_run${run_number}" "$results_dir" || true
 
     # Record start time
-    local t_start=$(now)
+    local t_start
+    t_start=$(now)
     log_info "Deployment started at $(now_human)"
 
     # Apply VM manifest
-    kubectl apply -f "$TEST_VM_MANIFEST"
-    kubectl apply -f "$TEST_VM_SERVICES"
-    local t_manifest_applied=$(now)
+    kubectl apply -f "$TEST_VM_MANIFEST" >/dev/null 2>&1 || true
+    kubectl apply -f "$TEST_VM_SERVICES" >/dev/null 2>&1 || true
+    local t_manifest_applied
+    t_manifest_applied=$(now)
     record_timing "$results_dir" "run${run_number}_manifest_applied" \
-        $((t_manifest_applied - t_start))
+        $((t_manifest_applied - t_start)) || true
 
-    # Wait for DataVolume (disk import)
+    # Wait for DataVolume — capture via temp file to avoid subshell hang
+    local dv_file="/tmp/dv_elapsed_${run_number}.tmp"
+    echo "-1" > "$dv_file"
+    wait_for_datavolume > "$dv_file" || true
     local dv_elapsed
-    dv_elapsed=$(wait_for_datavolume)
-    local t_dv_ready=$(now)
-    record_timing "$results_dir" "run${run_number}_disk_import" "$dv_elapsed"
+    dv_elapsed=$(sanitize_number "$(cat "$dv_file")")
+    rm -f "$dv_file"
+    local t_dv_ready
+    t_dv_ready=$(now)
+    record_timing "$results_dir" "run${run_number}_disk_import" "$dv_elapsed" || true
 
-    # Wait for VMI to be Running
+    # Wait for VMI to be Running — capture via temp file
+    local vm_file="/tmp/vm_elapsed_${run_number}.tmp"
+    echo "-1" > "$vm_file"
+    wait_for_vm_ready "$TEST_VM" 300 > "$vm_file" 2>/dev/null || true
     local vm_elapsed
-    vm_elapsed=$(wait_for_vm_ready "$TEST_VM" 300)
-    local t_vm_running=$(now)
+    vm_elapsed=$(sanitize_number "$(cat "$vm_file")")
+    rm -f "$vm_file"
+    local t_vm_running
+    t_vm_running=$(now)
     record_timing "$results_dir" "run${run_number}_vm_running" \
-        $((t_vm_running - t_dv_ready))
+        $((t_vm_running - t_dv_ready)) || true
 
     # Wait for network (extra time for cloud-init)
     log_info "Waiting for network initialization (cloud-init)..."
     sleep 30
-    local t_network=$(now)
+    local t_network
+    t_network=$(now)
     record_timing "$results_dir" "run${run_number}_network_init" \
-        $((t_network - t_vm_running))
+        $((t_network - t_vm_running)) || true
 
-    # Wait for HTTP
+    # Wait for HTTP — capture via temp file
+    local http_file="/tmp/http_elapsed_${run_number}.tmp"
+    echo "-1" > "$http_file"
+    wait_for_http_ready > "$http_file" || true
     local http_elapsed
-    http_elapsed=$(wait_for_http_ready)
-    local t_http_ready=$(now)
-    record_timing "$results_dir" "run${run_number}_http_ready" "$http_elapsed"
+    http_elapsed=$(sanitize_number "$(cat "$http_file")")
+    rm -f "$http_file"
+    local t_http_ready
+    t_http_ready=$(now)
+    record_timing "$results_dir" "run${run_number}_http_ready" "$http_elapsed" || true
 
     # Calculate total time
     local total=$((t_http_ready - t_start))
-    record_timing "$results_dir" "run${run_number}_TOTAL" "$total"
+    record_timing "$results_dir" "run${run_number}_TOTAL" "$total" || true
 
     # Take post-deployment snapshot
-    take_snapshot "post_deploy_run${run_number}" "$results_dir"
+    take_snapshot "post_deploy_run${run_number}" "$results_dir" || true
 
     # Stop metrics collection
-    stop_metrics_collection "$metrics_pid"
+    kill "$metrics_pid" 2>/dev/null || true
+    wait "$metrics_pid" 2>/dev/null || true
+    rm -f "$metrics_pid_file"
 
     log_info "Run $run_number complete:"
     log_info "  Disk import: ${dv_elapsed}s"
@@ -229,6 +266,8 @@ run_spinup() {
     cleanup_test_vm
     log_info "Waiting ${BETWEEN_RUNS_WAIT}s before next run..."
     sleep "$BETWEEN_RUNS_WAIT"
+
+    return 0
 }
 
 # =============================================================================
@@ -236,6 +275,9 @@ run_spinup() {
 # =============================================================================
 
 main() {
+    # Safety cleanup on exit
+    trap 'pkill -f "take_snapshot" 2>/dev/null || true; rm -f /tmp/metrics_pid_spinup_*.tmp /tmp/dv_elapsed_*.tmp /tmp/vm_elapsed_*.tmp /tmp/http_elapsed_*.tmp 2>/dev/null || true' EXIT
+
     log_step "Scenario 4: VM Deployment Time Measurement"
     log_info "This scenario measures how long it takes to deploy a fresh VM"
     log_info "from a YAML manifest to fully operational."
@@ -262,7 +304,6 @@ main() {
     results_dir=$(init_results_dir "04_vm_spinup")
     log_info "Results will be saved to: $results_dir"
 
-    # Write config
     cat > "$results_dir/scenario_config.txt" << EOF
 Scenario: VM Deployment Time
 Date: $(now_human)
@@ -282,25 +323,25 @@ EOF
 
     # Run tests
     for i in $(seq 1 "$REPETITIONS"); do
-        run_spinup "$i" "$results_dir"
+        run_spinup "$i" "$results_dir" || true
     done
 
     # Export metrics
     log_step "Exporting time series data..."
-    local end_ts=$(now)
+    local end_ts
+    end_ts=$(now)
     local start_ts=$((end_ts - 7200))
 
     export_metrics_to_csv \
         "100 - (avg(rate(node_cpu_seconds_total{mode='idle'}[1m])) * 100)" \
         "$start_ts" "$end_ts" 15 \
-        "$results_dir/cpu_timeseries.csv" "cpu_pct"
+        "$results_dir/cpu_timeseries.csv" "cpu_pct" || true
 
     export_metrics_to_csv \
         "rate(node_disk_written_bytes_total[1m])" \
         "$start_ts" "$end_ts" 15 \
-        "$results_dir/disk_write_timeseries.csv" "write_bytes_per_sec"
+        "$results_dir/disk_write_timeseries.csv" "write_bytes_per_sec" || true
 
-    # Print final summary
     print_timing_summary "$results_dir"
 
     log_step "VM spinup tests complete!"
@@ -317,10 +358,13 @@ with open('$results_dir/timing_summary.csv') as f:
     for row in csv.DictReader(f):
         label = row['label']
         val = row['seconds']
-        if val != 'timeout':
-            # Extract stage name (remove run number prefix)
-            stage = '_'.join(label.split('_')[2:]) if label.count('_') >= 2 else label
-            timings[stage].append(float(val))
+        try:
+            v = float(val)
+            if v >= 0:
+                stage = '_'.join(label.split('_')[2:]) if label.count('_') >= 2 else label
+                timings[stage].append(v)
+        except ValueError:
+            pass
 
 print('\nAverage deployment times:')
 print('-' * 40)
