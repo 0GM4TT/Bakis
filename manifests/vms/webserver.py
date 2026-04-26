@@ -9,7 +9,7 @@ import urllib.request
 import json
 import os
 
-PROMETHEUS_URL = "http://192.168.50.200:30091"
+PROMETHEUS_URL = "http://192.168.1.155:30091"
 VM_NAME = os.environ.get("VM_NAME", "unknown")
 
 def get_current_node():
