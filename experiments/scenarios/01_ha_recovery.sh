@@ -52,10 +52,10 @@ set_eviction_timeout() {
 
     wait_for_nodes_ready 120 || log_warn "Some nodes not ready after k3s restart"
 
-    # Verify setting actually applied
+    # Verify setting actually applied — check the k3s server process command line
     local applied
     applied=$(ssh -i "$SSH_KEY" "$MASTER_USER@$MASTER_IP" \
-        "ps -ef | grep '[k]ube-apiserver' | tr ' ' '\n' | grep 'default-not-ready-toleration' | head -1" 2>/dev/null)
+        "sudo cat /proc/\$(pgrep -f '[k]3s server' | head -1)/cmdline 2>/dev/null | tr '\0' ' ' | grep -oE 'default-not-ready-toleration-seconds=[0-9]+' | head -1" 2>/dev/null)
     if [[ "$applied" == *"=${timeout_seconds}"* ]]; then
         log_info "✓ Eviction timeout confirmed at ${timeout_seconds}s"
     else
