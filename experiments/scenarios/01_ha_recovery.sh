@@ -43,7 +43,7 @@ set_eviction_timeout() {
         -e 's|default-unreachable-toleration-seconds=[0-9]*|default-unreachable-toleration-seconds=${timeout_seconds}|g' \
         /etc/systemd/system/k3s.service" >/dev/null 2>&1 || true
 
-    # Reload systemd and restart k3s
+    # Reload systemd and restart k3s so the new args take effect
     ssh -i "$SSH_KEY" "$MASTER_USER@$MASTER_IP" \
         "sudo systemctl daemon-reload && sudo systemctl restart k3s" >/dev/null 2>&1 || true
 
@@ -52,14 +52,14 @@ set_eviction_timeout() {
 
     wait_for_nodes_ready 120 || log_warn "Some nodes not ready after k3s restart"
 
-    # Verify setting actually applied — check the k3s server process command line
+    # Verify setting actually applied by reading the systemd unit file
     local applied
     applied=$(ssh -i "$SSH_KEY" "$MASTER_USER@$MASTER_IP" \
-        "sudo cat /proc/\$(pgrep -f '[k]3s server' | head -1)/cmdline 2>/dev/null | tr '\0' ' ' | grep -oE 'default-not-ready-toleration-seconds=[0-9]+' | head -1" 2>/dev/null)
+        "sudo grep -oE 'default-not-ready-toleration-seconds=[0-9]+' /etc/systemd/system/k3s.service | head -1" 2>/dev/null)
     if [[ "$applied" == *"=${timeout_seconds}"* ]]; then
-        log_info "✓ Eviction timeout confirmed at ${timeout_seconds}s"
+        log_info "✓ Eviction timeout confirmed at ${timeout_seconds}s in systemd unit"
     else
-        log_warn "⚠ Could not verify eviction timeout was applied! Got: $applied"
+        log_warn "⚠ Could not verify eviction timeout! Got: '$applied'"
     fi
 }
 
