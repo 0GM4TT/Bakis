@@ -37,18 +37,30 @@ set_eviction_timeout() {
     local timeout_seconds=$1
     log_info "Setting eviction timeout to ${timeout_seconds}s on master..."
 
+    # Modify systemd unit file in-place — replace existing values
+    ssh -i "$SSH_KEY" "$MASTER_USER@$MASTER_IP" "sudo sed -i \
+        -e 's|default-not-ready-toleration-seconds=[0-9]*|default-not-ready-toleration-seconds=${timeout_seconds}|g' \
+        -e 's|default-unreachable-toleration-seconds=[0-9]*|default-unreachable-toleration-seconds=${timeout_seconds}|g' \
+        /etc/systemd/system/k3s.service" >/dev/null 2>&1 || true
+
+    # Reload systemd and restart k3s
     ssh -i "$SSH_KEY" "$MASTER_USER@$MASTER_IP" \
-        "sudo sed -i '/node-status-update-frequency/d' /etc/rancher/k3s/config.yaml; \
-         sudo sed -i '/default-not-ready-toleration-seconds/d' /etc/rancher/k3s/config.yaml; \
-         echo 'kube-apiserver-arg:' | sudo tee -a /etc/rancher/k3s/config.yaml; \
-         echo '  - default-not-ready-toleration-seconds=${timeout_seconds}' | sudo tee -a /etc/rancher/k3s/config.yaml; \
-         echo '  - default-unreachable-toleration-seconds=${timeout_seconds}' | sudo tee -a /etc/rancher/k3s/config.yaml; \
-         sudo systemctl restart k3s" >/dev/null 2>&1 || true
+        "sudo systemctl daemon-reload && sudo systemctl restart k3s" >/dev/null 2>&1 || true
 
     log_info "Waiting 30s for k3s to restart..."
     sleep 30
 
     wait_for_nodes_ready 120 || log_warn "Some nodes not ready after k3s restart"
+
+    # Verify setting actually applied
+    local applied
+    applied=$(ssh -i "$SSH_KEY" "$MASTER_USER@$MASTER_IP" \
+        "ps -ef | grep '[k]ube-apiserver' | tr ' ' '\n' | grep 'default-not-ready-toleration' | head -1" 2>/dev/null)
+    if [[ "$applied" == *"=${timeout_seconds}"* ]]; then
+        log_info "✓ Eviction timeout confirmed at ${timeout_seconds}s"
+    else
+        log_warn "⚠ Could not verify eviction timeout was applied! Got: $applied"
+    fi
 }
 
 ensure_vm_on_failure_node() {
