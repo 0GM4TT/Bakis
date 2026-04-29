@@ -19,7 +19,7 @@ TEST_VM_SSH_PORT="$VM1_SSH_PORT"
 
 REPETITIONS=10
 EVICTION_TIMEOUTS=(300 60 30)
-STABILIZATION_WAIT=120
+STABILIZATION_WAIT=300
 
 # =============================================================================
 # HELPER FUNCTIONS
@@ -139,7 +139,7 @@ wait_for_node_not_ready() {
 
 # Wait for VM recovery — echoes only seconds to stdout
 wait_for_vm_recovery() {
-    local timeout=600
+    local timeout=900
     local start
     start=$(now)
     echo "[INFO] $(date '+%H:%M:%S') Waiting for $TEST_VM to recover on a healthy node..." >&2
@@ -376,7 +376,7 @@ EOF
 
         set_eviction_timeout "$timeout"
 
-        local timeout_dir="$results_dir/timeout_${timeout}s"
+        _dir="$results_dir/timeout_${timeout}s"
         mkdir -p "$timeout_dir"
 
         for i in $(seq 1 "$REPETITIONS"); do
