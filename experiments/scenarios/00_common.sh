@@ -17,7 +17,7 @@ WORKER1_IP="192.168.1.160"
 WORKER2_IP="192.168.1.103"
 MASTER_USER="bakalauras"
 SSH_KEY="$HOME/.ssh/ansible_id"
-RESULTS_DIR="$(dirname "$0")/../results"
+RESULTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/results"
 
 # Node exporter instance labels (as seen in Prometheus)
 MASTER_INSTANCE="192.168.1.155:9100"
