@@ -5,6 +5,11 @@
 # =============================================================================
 
 source "$(dirname "$0")/00_common.sh"
+# Failsafe: ensure RESULTS_DIR is set absolutely before any operations
+if [ -z "$RESULTS_DIR" ] || [ "$RESULTS_DIR" == "/results" ]; then
+    RESULTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/results"
+fi
+mkdir -p "$RESULTS_DIR"
 
 # =============================================================================
 # CONFIGURATION
