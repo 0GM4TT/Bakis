@@ -95,9 +95,22 @@ elapsed() {
 # Returns path to results directory
 init_results_dir() {
     local scenario_name=$1
-    local timestamp=$(date '+%Y%m%d_%H%M%S')
-    local dir="$RESULTS_DIR/${scenario_name}_${timestamp}"
-    mkdir -p "$dir"
+    local timestamp
+    timestamp=$(date '+%Y%m%d_%H%M%S')
+    
+    # Defensive: re-resolve RESULTS_DIR if empty
+    if [ -z "$RESULTS_DIR" ]; then
+        RESULTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/results"
+    fi
+    
+    local dir="${RESULTS_DIR}/${scenario_name}_${timestamp}"
+    mkdir -p "$dir" >&2
+    
+    if [ ! -d "$dir" ]; then
+        echo "[ERROR] Failed to create results directory: $dir" >&2
+        return 1
+    fi
+    
     echo "$dir"
 }
 
