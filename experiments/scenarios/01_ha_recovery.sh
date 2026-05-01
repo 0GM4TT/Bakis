@@ -311,7 +311,17 @@ run_single_test() {
     rm -f "$nr_file"
     record_timing "$results_dir" "run${run_number}_node_not_ready" "$not_ready_elapsed" || true
 
-    # Step 7: Wait for VM recovery — temp file capture, NOT $()
+    # Force Longhorn to release volumes from dead node
+    # Without this Longhorn holds volumes until dead node returns — blocking VM recovery
+    log_info "Waiting 60s then force-detaching Longhorn volumes from $FAILURE_NODE..."
+    sleep 60
+    for vol in $(kubectl get volumes.longhorn.io -n longhorn-system \
+        --no-headers 2>/dev/null | awk '{print $1}'); do
+        kubectl patch volume.longhorn.io "$vol" -n longhorn-system \
+            --type=merge \
+            -p "{\"spec\":{\"nodeID\":\"\"}}" >/dev/null 2>&1 || true
+    done
+    log_info "Force detach applied — Longhorn will reattach to healthy node"
     local rec_file="/tmp/ha_recovery_${run_number}_$$.tmp"
     echo "-1" > "$rec_file"
     wait_for_vm_recovery > "$rec_file" || true
