@@ -322,6 +322,19 @@ run_single_test() {
             -p "{\"spec\":{\"nodeID\":\"\"}}" >/dev/null 2>&1 || true
     done
     log_info "Force detach applied — Longhorn will reattach to healthy node"
+
+    # Force delete stuck virt-launcher pods on failed node
+    # These get stuck in Terminating and block VM rescheduling indefinitely
+    log_info "Force deleting stuck virt-launcher pods on $FAILURE_NODE..."
+    sleep 10
+    kubectl get pods -n default -o wide --no-headers 2>/dev/null | \
+        grep "$FAILURE_NODE" | awk '{print $1}' | while read pod; do
+        echo "[INFO] $(date '+%H:%M:%S') Force deleting stuck pod: $pod" >&2
+        kubectl delete pod "$pod" --force --grace-period=0 \
+            -n default >/dev/null 2>&1 || true
+    done
+    log_info "Stuck pods cleared — VM should reschedule on healthy node shortly"
+
     local rec_file="/tmp/ha_recovery_${run_number}_$$.tmp"
     echo "-1" > "$rec_file"
     wait_for_vm_recovery > "$rec_file" || true
