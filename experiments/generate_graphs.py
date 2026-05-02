@@ -2,21 +2,21 @@
 """
 generate_graphs.py
 ==================
-Generates thesis-ready graphs from experiment CSV results.
+Generuoja bakalauriniam darbui paruoštus grafikus iš eksperimentų CSV rezultatų.
 
-Usage:
-    python3 generate_graphs.py --results <path_to_results_dir> --scenario <1-5>
+Naudojimas:
+    python3 generate_graphs.py --results <kelias_iki_rezultatu_dir> --scenario <1-5>
 
-Examples:
+Pavyzdžiai:
     python3 generate_graphs.py --results experiments/results/01_ha_recovery_20260417_120000 --scenario 1
     python3 generate_graphs.py --results experiments/results/02_live_migration_20260417_140000 --scenario 2
     python3 generate_graphs.py --results experiments/results/03_resource_comparison_20260417_150000 --scenario 3
     python3 generate_graphs.py --results experiments/results/04_vm_spinup_20260417_160000 --scenario 4
     python3 generate_graphs.py --results experiments/results/05_cluster_startup_20260417_170000 --scenario 5
 
-Output:
-    PNG graphs saved to <results_dir>/graphs/
-    Ready to insert into thesis document.
+Išvestis:
+    PNG grafikai išsaugomi į <results_dir>/graphs/
+    Paruošti įterpti į bakalaurinio darbo dokumentą.
 """
 
 import argparse
@@ -32,23 +32,29 @@ import matplotlib.patches as mpatches
 import numpy as np
 
 # =============================================================================
-# STYLE CONFIGURATION
-# Academic-friendly style - clean, readable, printable
+# STILIAUS KONFIGURACIJA
+# Akademinis stilius - švarus, įskaitomas, tinkamas spausdinti
 # =============================================================================
 
 COLORS = {
-    'master':  '#2196F3',   # blue
-    'worker1': '#4CAF50',   # green
-    'worker2': '#FF9800',   # orange
-    'vm1':     '#9C27B0',   # purple
-    'vm2':     '#F44336',   # red
-    'ok':      '#4CAF50',   # green
-    'fail':    '#F44336',   # red
+    'master':  '#2196F3',   # mėlyna
+    'worker1': '#4CAF50',   # žalia
+    'worker2': '#FF9800',   # oranžinė
+    'vm1':     '#9C27B0',   # violetinė
+    'vm2':     '#F44336',   # raudona
+    'ok':      '#4CAF50',   # žalia
+    'fail':    '#F44336',   # raudona
     'timeout_300': '#2196F3',
     'timeout_60':  '#FF9800',
     'timeout_30':  '#F44336',
     'unloaded': '#4CAF50',
     'loaded':   '#F44336',
+}
+
+# Lietuviški VM būsenų pavadinimai
+CONDITION_LABELS_LT = {
+    'unloaded': 'Be apkrovos',
+    'loaded': 'Su apkrova',
 }
 
 def setup_style():
@@ -68,18 +74,18 @@ def setup_style():
     })
 
 def save_fig(fig, path, title=""):
-    """Save figure and print confirmation."""
+    """Išsaugoti paveikslą ir atspausdinti patvirtinimą."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     fig.savefig(path, dpi=150, bbox_inches='tight')
     plt.close(fig)
-    print(f"  Saved: {path}")
+    print(f"  Išsaugota: {path}")
 
 # =============================================================================
-# SCENARIO 1 - HA RECOVERY GRAPHS
+# 1 SCENARIJUS - HA ATSTATYMO GRAFIKAI
 # =============================================================================
 
 def generate_ha_recovery_graphs(results_dir, graphs_dir):
-    print("\nGenerating Scenario 1 - HA Recovery graphs...")
+    print("\nGeneruojami 1 scenarijaus - HA atstatymo grafikai...")
 
     timeouts = [300, 60, 30]
     recovery_data = {}
@@ -90,31 +96,31 @@ def generate_ha_recovery_graphs(results_dir, graphs_dir):
         summary_file = os.path.join(timeout_dir, "timing_summary.csv")
 
         if not os.path.exists(summary_file):
-            print(f"  WARNING: No data for timeout {timeout}s - skipping")
+            print(f"  ĮSPĖJIMAS: Nėra duomenų {timeout}s pertraukai - praleidžiama")
             continue
 
         df = pd.read_csv(summary_file)
 
-        # Extract VM recovery times
+        # Išgauti VM atstatymo laikus
         recovery = df[df['label'].str.contains('vm_recovery')]['seconds']
         recovery = pd.to_numeric(recovery, errors='coerce').dropna()
         if len(recovery) > 0:
             recovery_data[timeout] = recovery.tolist()
 
-        # Extract HTTP downtime
+        # Išgauti HTTP prastovos laikus
         downtime = df[df['label'].str.contains('http_downtime')]['seconds']
         downtime = pd.to_numeric(downtime, errors='coerce').dropna()
         if len(downtime) > 0:
             downtime_data[timeout] = downtime.tolist()
 
     if not recovery_data:
-        print("  No recovery data found - skipping HA graphs")
+        print("  Atstatymo duomenų nerasta - HA grafikai praleidžiami")
         return
 
-    # --- Graph 1: VM Recovery Time Box Plot ---
+    # --- 1 grafikas: VM atstatymo laiko stačiakampė diagrama ---
     fig, ax = plt.subplots(figsize=(8, 5))
 
-    labels = [f"{t}s\neviction" for t in recovery_data.keys()]
+    labels = [f"{t}s\npertrauka" for t in recovery_data.keys()]
     data = list(recovery_data.values())
     colors = [COLORS[f'timeout_{t}'] for t in recovery_data.keys()]
 
@@ -123,37 +129,37 @@ def generate_ha_recovery_graphs(results_dir, graphs_dir):
         patch.set_facecolor(color)
         patch.set_alpha(0.7)
 
-    ax.set_title('VM Recovery Time by Eviction Timeout')
-    ax.set_xlabel('Eviction Timeout Setting')
-    ax.set_ylabel('Recovery Time (seconds)')
+    ax.set_title('VM atstatymo laikas pagal iškeldinimo pertraukos reikšmę')
+    ax.set_xlabel('Iškeldinimo pertraukos nustatymas')
+    ax.set_ylabel('Atstatymo laikas (sekundėmis)')
 
-    # Add mean values above boxes
+    # Pridėti vidurkius virš stačiakampių
     for i, values in enumerate(data):
         mean_val = statistics.mean(values)
-        ax.text(i + 1, max(values) + 2, f'avg: {mean_val:.0f}s',
+        ax.text(i + 1, max(values) + 2, f'vid.: {mean_val:.0f}s',
                 ha='center', va='bottom', fontsize=9, color='#333333')
 
     save_fig(fig, os.path.join(graphs_dir, '01_ha_recovery_time_boxplot.png'))
 
-    # --- Graph 2: Recovery Time per Run (Line Chart) ---
+    # --- 2 grafikas: Atstatymo laikas kiekvienam bandymui (linijinė diagrama) ---
     fig, ax = plt.subplots(figsize=(10, 5))
 
     for timeout, values in recovery_data.items():
         runs = list(range(1, len(values) + 1))
         ax.plot(runs, values, 'o-',
-                label=f'{timeout}s eviction',
+                label=f'{timeout}s pertrauka',
                 color=COLORS[f'timeout_{timeout}'],
                 linewidth=2, markersize=6)
 
-    ax.set_title('VM Recovery Time per Run')
-    ax.set_xlabel('Run Number')
-    ax.set_ylabel('Recovery Time (seconds)')
+    ax.set_title('VM atstatymo laikas kiekvienam bandymui')
+    ax.set_xlabel('Bandymo numeris')
+    ax.set_ylabel('Atstatymo laikas (sekundėmis)')
     ax.legend()
     ax.set_xticks(range(1, max(len(v) for v in recovery_data.values()) + 1))
 
     save_fig(fig, os.path.join(graphs_dir, '01_ha_recovery_time_per_run.png'))
 
-    # --- Graph 3: HTTP Downtime Comparison ---
+    # --- 3 grafikas: HTTP prastovos palyginimas ---
     if downtime_data:
         fig, ax = plt.subplots(figsize=(8, 5))
 
@@ -165,9 +171,9 @@ def generate_ha_recovery_graphs(results_dir, graphs_dir):
         bars = ax.bar(labels, means, yerr=stds, color=colors, alpha=0.7,
                       capsize=5, error_kw={'linewidth': 2})
 
-        ax.set_title('Average HTTP Downtime by Eviction Timeout')
-        ax.set_xlabel('Eviction Timeout Setting')
-        ax.set_ylabel('HTTP Downtime (seconds)')
+        ax.set_title('Vidutinė HTTP prastova pagal iškeldinimo pertraukos reikšmę')
+        ax.set_xlabel('Iškeldinimo pertraukos nustatymas')
+        ax.set_ylabel('HTTP prastova (sekundėmis)')
 
         for bar, mean in zip(bars, means):
             ax.text(bar.get_x() + bar.get_width() / 2,
@@ -176,7 +182,7 @@ def generate_ha_recovery_graphs(results_dir, graphs_dir):
 
         save_fig(fig, os.path.join(graphs_dir, '01_ha_http_downtime.png'))
 
-    # --- Graph 4: Summary statistics table ---
+    # --- 4 grafikas: Suvestinės statistikos lentelė ---
     fig, ax = plt.subplots(figsize=(10, 4))
     ax.axis('off')
 
@@ -193,30 +199,30 @@ def generate_ha_recovery_graphs(results_dir, graphs_dir):
         ]
         table_data.append(row)
 
-    columns = ['Eviction\nTimeout', 'Avg Recovery', 'Min Recovery',
-               'Max Recovery', 'Std Dev', 'Avg HTTP\nDowntime']
+    columns = ['Iškeldinimo\npertrauka', 'Vid. atstatymas', 'Min. atstatymas',
+               'Maks. atstatymas', 'Std. nuokrypis', 'Vid. HTTP\nprastova']
     table = ax.table(cellText=table_data, colLabels=columns,
                      loc='center', cellLoc='center')
     table.auto_set_font_size(False)
     table.set_fontsize(10)
     table.scale(1.2, 2)
 
-    # Style header
+    # Stilizuoti antraštę
     for j in range(len(columns)):
         table[0, j].set_facecolor('#2196F3')
         table[0, j].set_text_props(color='white', fontweight='bold')
 
-    ax.set_title('HA Recovery Statistics Summary', pad=20, fontsize=13)
+    ax.set_title('HA atstatymo statistikos suvestinė', pad=20, fontsize=13)
     save_fig(fig, os.path.join(graphs_dir, '01_ha_summary_table.png'))
 
-    print("  Scenario 1 graphs complete!")
+    print("  1 scenarijaus grafikai paruošti!")
 
 # =============================================================================
-# SCENARIO 2 - LIVE MIGRATION GRAPHS
+# 2 SCENARIJUS - GYVOSIOS MIGRACIJOS GRAFIKAI
 # =============================================================================
 
 def generate_migration_graphs(results_dir, graphs_dir):
-    print("\nGenerating Scenario 2 - Live Migration graphs...")
+    print("\nGeneruojami 2 scenarijaus - gyvosios migracijos grafikai...")
 
     conditions = ['unloaded', 'loaded']
     migration_data = {}
@@ -227,7 +233,7 @@ def generate_migration_graphs(results_dir, graphs_dir):
         summary_file = os.path.join(condition_dir, "timing_summary.csv")
 
         if not os.path.exists(summary_file):
-            print(f"  WARNING: No data for {condition} - skipping")
+            print(f"  ĮSPĖJIMAS: Nėra duomenų būsenai '{condition}' - praleidžiama")
             continue
 
         df = pd.read_csv(summary_file)
@@ -237,7 +243,7 @@ def generate_migration_graphs(results_dir, graphs_dir):
         if len(durations) > 0:
             migration_data[condition] = durations.tolist()
 
-        # Collect HTTP failure data from CSV files
+        # Surinkti HTTP klaidų duomenis iš CSV failų
         http_files = glob.glob(os.path.join(condition_dir, 'http_run*.csv'))
         fails_per_run = []
         for hf in sorted(http_files):
@@ -252,52 +258,52 @@ def generate_migration_graphs(results_dir, graphs_dir):
             http_data[condition] = fails_per_run
 
     if not migration_data:
-        print("  No migration data found - skipping")
+        print("  Migracijos duomenų nerasta - praleidžiama")
         return
 
-    # --- Graph 1: Migration Duration Box Plot ---
+    # --- 1 grafikas: Migracijos trukmės stačiakampė diagrama ---
     fig, ax = plt.subplots(figsize=(7, 5))
 
     labels = list(migration_data.keys())
     data = list(migration_data.values())
     colors = [COLORS[c] for c in labels]
 
-    bp = ax.boxplot(data, labels=[l.capitalize() for l in labels],
+    bp = ax.boxplot(data, labels=[CONDITION_LABELS_LT.get(l, l) for l in labels],
                     patch_artist=True)
     for patch, color in zip(bp['boxes'], colors):
         patch.set_facecolor(color)
         patch.set_alpha(0.7)
 
-    ax.set_title('Live Migration Duration: Idle vs Under Load')
-    ax.set_xlabel('VM Condition During Migration')
-    ax.set_ylabel('Migration Duration (seconds)')
+    ax.set_title('Gyvosios migracijos trukmė: be apkrovos ir su apkrova')
+    ax.set_xlabel('VM būsena migracijos metu')
+    ax.set_ylabel('Migracijos trukmė (sekundėmis)')
 
     for i, values in enumerate(data):
         mean_val = statistics.mean(values)
-        ax.text(i + 1, max(values) + 1, f'avg: {mean_val:.0f}s',
+        ax.text(i + 1, max(values) + 1, f'vid.: {mean_val:.0f}s',
                 ha='center', va='bottom', fontsize=9)
 
     save_fig(fig, os.path.join(graphs_dir, '02_migration_duration_boxplot.png'))
 
-    # --- Graph 2: Migration Time per Run ---
+    # --- 2 grafikas: Migracijos laikas kiekvienam bandymui ---
     fig, ax = plt.subplots(figsize=(10, 5))
 
     for condition, values in migration_data.items():
         runs = list(range(1, len(values) + 1))
         ax.plot(runs, values, 'o-',
-                label=condition.capitalize(),
+                label=CONDITION_LABELS_LT.get(condition, condition),
                 color=COLORS[condition],
                 linewidth=2, markersize=6)
 
-    ax.set_title('Migration Duration per Run')
-    ax.set_xlabel('Run Number')
-    ax.set_ylabel('Duration (seconds)')
+    ax.set_title('Migracijos trukmė kiekvienam bandymui')
+    ax.set_xlabel('Bandymo numeris')
+    ax.set_ylabel('Trukmė (sekundėmis)')
     ax.legend()
     ax.set_xticks(range(1, max(len(v) for v in migration_data.values()) + 1))
 
     save_fig(fig, os.path.join(graphs_dir, '02_migration_duration_per_run.png'))
 
-    # --- Graph 3: HTTP Failures During Migration ---
+    # --- 3 grafikas: HTTP klaidos migracijos metu ---
     if http_data:
         fig, ax = plt.subplots(figsize=(10, 5))
 
@@ -305,18 +311,18 @@ def generate_migration_graphs(results_dir, graphs_dir):
             runs = list(range(1, len(values) + 1))
             ax.bar([r + (0.2 if condition == 'loaded' else -0.2) for r in runs],
                    values, width=0.35,
-                   label=condition.capitalize(),
+                   label=CONDITION_LABELS_LT.get(condition, condition),
                    color=COLORS[condition], alpha=0.7)
 
-        ax.set_title('HTTP Request Failures During Migration')
-        ax.set_xlabel('Run Number')
-        ax.set_ylabel('Number of Failed Requests')
+        ax.set_title('Nepavykusios HTTP užklausos migracijos metu')
+        ax.set_xlabel('Bandymo numeris')
+        ax.set_ylabel('Nepavykusių užklausų skaičius')
         ax.legend()
         ax.set_xticks(range(1, max(len(v) for v in http_data.values()) + 1))
 
         save_fig(fig, os.path.join(graphs_dir, '02_migration_http_failures.png'))
 
-    # --- Graph 4: Summary comparison ---
+    # --- 4 grafikas: Suvestinės palyginimas ---
     fig, ax = plt.subplots(figsize=(8, 4))
     ax.axis('off')
 
@@ -325,7 +331,7 @@ def generate_migration_graphs(results_dir, graphs_dir):
         vals = migration_data[condition]
         http_fails = http_data.get(condition, [0])
         row = [
-            condition.capitalize(),
+            CONDITION_LABELS_LT.get(condition, condition),
             f"{statistics.mean(vals):.1f}s",
             f"{min(vals):.1f}s",
             f"{max(vals):.1f}s",
@@ -334,7 +340,7 @@ def generate_migration_graphs(results_dir, graphs_dir):
         ]
         table_data.append(row)
 
-    columns = ['Condition', 'Avg Duration', 'Min', 'Max', 'Std Dev', 'Avg HTTP\nFailures']
+    columns = ['Būsena', 'Vid. trukmė', 'Min.', 'Maks.', 'Std. nuokrypis', 'Vid. HTTP\nklaidos']
     table = ax.table(cellText=table_data, colLabels=columns,
                      loc='center', cellLoc='center')
     table.auto_set_font_size(False)
@@ -345,22 +351,22 @@ def generate_migration_graphs(results_dir, graphs_dir):
         table[0, j].set_facecolor('#4CAF50')
         table[0, j].set_text_props(color='white', fontweight='bold')
 
-    ax.set_title('Live Migration Statistics Summary', pad=20, fontsize=13)
+    ax.set_title('Gyvosios migracijos statistikos suvestinė', pad=20, fontsize=13)
     save_fig(fig, os.path.join(graphs_dir, '02_migration_summary_table.png'))
 
-    print("  Scenario 2 graphs complete!")
+    print("  2 scenarijaus grafikai paruošti!")
 
 # =============================================================================
-# SCENARIO 3 - RESOURCE COMPARISON GRAPHS
+# 3 SCENARIJUS - IŠTEKLIŲ PALYGINIMO GRAFIKAI
 # =============================================================================
 
 def generate_resource_graphs(results_dir, graphs_dir):
-    print("\nGenerating Scenario 3 - Resource Comparison graphs...")
+    print("\nGeneruojami 3 scenarijaus - išteklių palyginimo grafikai...")
 
     phases = {
-        'phase1_idle': 'Idle Baseline',
-        'phase2_loaded': 'Under VM Load',
-        'phase3_recovery': 'Recovery'
+        'phase1_idle': 'Tuščioji būsena',
+        'phase2_loaded': 'Su VM apkrova',
+        'phase3_recovery': 'Atstatymas'
     }
 
     all_data = {}
@@ -371,20 +377,20 @@ def generate_resource_graphs(results_dir, graphs_dir):
             all_data[phase_label] = df
 
     if not all_data:
-        print("  No resource data found - skipping")
+        print("  Išteklių duomenų nerasta - praleidžiama")
         return
 
-    # Combine all phases
+    # Sujungti visas fazes
     combined = pd.concat(all_data.values(), keys=all_data.keys())
     combined = combined.reset_index(level=0).rename(columns={'level_0': 'phase'})
 
-    # --- Graph 1: CPU comparison Pi nodes vs VMs across phases ---
+    # --- 1 grafikas: CPU palyginimas Pi mazgai vs VM per visas fazes ---
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
     for ax, source_type, title in zip(
         axes,
         ['pi_node', 'vm'],
-        ['Pi Node CPU Usage', 'VM CPU Usage']
+        ['Pi mazgų CPU naudojimas', 'VM CPU naudojimas']
     ):
         phase_labels = []
         node_data = {}
@@ -396,7 +402,7 @@ def generate_resource_graphs(results_dir, graphs_dir):
                     source_type if 'source_type' in df.columns else '', na=False
                 )]
                 if 'source_type' not in df.columns:
-                    # Fall back to node column
+                    # Atsarginis variantas - naudoti node stulpelį
                     subset = df
 
                 for node in subset.get('source_name', subset.get('node', pd.Series())).unique():
@@ -422,18 +428,18 @@ def generate_resource_graphs(results_dir, graphs_dir):
                    color=node_colors[i % len(node_colors)])
 
         ax.set_title(title)
-        ax.set_xlabel('Phase')
-        ax.set_ylabel('CPU Usage (%)')
+        ax.set_xlabel('Fazė')
+        ax.set_ylabel('CPU naudojimas (%)')
         ax.set_xticks(x)
         ax.set_xticklabels(phase_labels, rotation=10)
         ax.legend(fontsize=9)
         ax.set_ylim(0, 100)
 
-    fig.suptitle('CPU Usage: Pi Nodes vs VMs Across Phases', fontsize=14)
+    fig.suptitle('CPU naudojimas: Pi mazgai vs VM per visas fazes', fontsize=14)
     plt.tight_layout()
     save_fig(fig, os.path.join(graphs_dir, '03_cpu_comparison.png'))
 
-    # --- Graph 2: RAM comparison ---
+    # --- 2 grafikas: RAM palyginimas ---
     fig, ax = plt.subplots(figsize=(10, 5))
 
     phase_list = list(phases.values())
@@ -459,9 +465,9 @@ def generate_resource_graphs(results_dir, graphs_dir):
         ax.bar(x + offset, values, width, label=node,
                alpha=0.8, color=color)
 
-    ax.set_title('RAM Usage: Pi Nodes vs VMs Across Phases')
-    ax.set_xlabel('Phase')
-    ax.set_ylabel('RAM Usage (%)')
+    ax.set_title('RAM naudojimas: Pi mazgai vs VM per visas fazes')
+    ax.set_xlabel('Fazė')
+    ax.set_ylabel('RAM naudojimas (%)')
     ax.set_xticks(x)
     ax.set_xticklabels(phase_list)
     ax.legend(fontsize=9)
@@ -469,7 +475,7 @@ def generate_resource_graphs(results_dir, graphs_dir):
 
     save_fig(fig, os.path.join(graphs_dir, '03_ram_comparison.png'))
 
-    # --- Graph 3: Network I/O time series ---
+    # --- 3 grafikas: Tinklo įvestis/išvestis laiko eilutė ---
     net_file = os.path.join(results_dir, 'network_rx_all.csv')
     if os.path.exists(net_file):
         fig, ax = plt.subplots(figsize=(12, 4))
@@ -481,25 +487,25 @@ def generate_resource_graphs(results_dir, graphs_dir):
 
         ax.plot(df['datetime'], df['rx_kbs'], color=COLORS['master'],
                 linewidth=1.5, alpha=0.8)
-        ax.set_title('Network Receive Rate During Experiment')
-        ax.set_xlabel('Time')
-        ax.set_ylabel('Receive Rate (KB/s)')
+        ax.set_title('Tinklo gavimo greitis eksperimento metu')
+        ax.set_xlabel('Laikas')
+        ax.set_ylabel('Gavimo greitis (KB/s)')
         plt.xticks(rotation=30)
 
         save_fig(fig, os.path.join(graphs_dir, '03_network_timeseries.png'))
 
-    print("  Scenario 3 graphs complete!")
+    print("  3 scenarijaus grafikai paruošti!")
 
 # =============================================================================
-# SCENARIO 4 - VM SPINUP GRAPHS
+# 4 SCENARIJUS - VM PALEIDIMO GRAFIKAI
 # =============================================================================
 
 def generate_spinup_graphs(results_dir, graphs_dir):
-    print("\nGenerating Scenario 4 - VM Spinup graphs...")
+    print("\nGeneruojami 4 scenarijaus - VM paleidimo grafikai...")
 
     summary_file = os.path.join(results_dir, 'timing_summary.csv')
     if not os.path.exists(summary_file):
-        print("  No timing data found - skipping")
+        print("  Laiko duomenų nerasta - praleidžiama")
         return
 
     df = pd.read_csv(summary_file)
@@ -514,22 +520,22 @@ def generate_spinup_graphs(results_dir, graphs_dir):
             stage_data[stage] = rows.tolist()
 
     if not stage_data:
-        print("  No stage data found - skipping")
+        print("  Etapų duomenų nerasta - praleidžiama")
         return
 
-    # --- Graph 1: Stacked bar chart of deployment stages ---
+    # --- 1 grafikas: Diegimo etapų sukrauta stulpelinė diagrama ---
     fig, ax = plt.subplots(figsize=(10, 5))
 
     stage_colors = ['#2196F3', '#4CAF50', '#FF9800', '#9C27B0', '#607D8B']
     stage_labels = {
-        'disk_import': 'Disk Import',
-        'vm_running': 'VM Boot',
-        'network_init': 'Network Init',
-        'http_ready': 'HTTP Ready',
-        'TOTAL': 'Total'
+        'disk_import': 'Disko importas',
+        'vm_running': 'VM paleidimas',
+        'network_init': 'Tinklo inicializacija',
+        'http_ready': 'HTTP paruoštas',
+        'TOTAL': 'Iš viso'
     }
 
-    # Only plot non-TOTAL stages stacked
+    # Braižyti tik ne-TOTAL etapus sukrautai diagramai
     plot_stages = [s for s in stages if s != 'TOTAL' and s in stage_data]
     n_runs = max(len(stage_data[s]) for s in plot_stages) if plot_stages else 0
 
@@ -539,7 +545,7 @@ def generate_spinup_graphs(results_dir, graphs_dir):
 
         for i, stage in enumerate(plot_stages):
             values = stage_data[stage][:n_runs]
-            # Pad if needed
+            # Užpildyti, jei reikia
             while len(values) < n_runs:
                 values.append(0)
             ax.bar(x, values, bottom=bottom,
@@ -547,21 +553,21 @@ def generate_spinup_graphs(results_dir, graphs_dir):
                    color=stage_colors[i], alpha=0.85)
             bottom += np.array(values)
 
-        # Add total line
+        # Pridėti bendrą liniją
         if 'TOTAL' in stage_data:
             totals = stage_data['TOTAL'][:n_runs]
             ax.plot(x, totals, 'ko--', linewidth=2,
-                    markersize=6, label='Total Time', zorder=5)
+                    markersize=6, label='Bendras laikas', zorder=5)
 
-        ax.set_title('VM Deployment Time by Stage')
-        ax.set_xlabel('Run Number')
-        ax.set_ylabel('Time (seconds)')
+        ax.set_title('VM diegimo laikas pagal etapus')
+        ax.set_xlabel('Bandymo numeris')
+        ax.set_ylabel('Laikas (sekundėmis)')
         ax.legend(loc='upper right', fontsize=9)
         ax.set_xticks(x)
 
         save_fig(fig, os.path.join(graphs_dir, '04_spinup_stacked_bar.png'))
 
-    # --- Graph 2: Box plot of total deployment time ---
+    # --- 2 grafikas: Bendro diegimo laiko stačiakampė diagrama ---
     if 'TOTAL' in stage_data:
         fig, ax = plt.subplots(figsize=(6, 5))
 
@@ -571,16 +577,16 @@ def generate_spinup_graphs(results_dir, graphs_dir):
 
         mean_val = statistics.mean(stage_data['TOTAL'])
         ax.axhline(y=mean_val, color='red', linestyle='--',
-                   linewidth=1.5, label=f'Mean: {mean_val:.0f}s')
+                   linewidth=1.5, label=f'Vidurkis: {mean_val:.0f}s')
 
-        ax.set_title('Total VM Deployment Time Distribution')
-        ax.set_ylabel('Total Time (seconds)')
-        ax.set_xticklabels(['All Runs'])
+        ax.set_title('Bendro VM diegimo laiko pasiskirstymas')
+        ax.set_ylabel('Bendras laikas (sekundėmis)')
+        ax.set_xticklabels(['Visi bandymai'])
         ax.legend()
 
         save_fig(fig, os.path.join(graphs_dir, '04_spinup_total_boxplot.png'))
 
-    # --- Graph 3: Stage averages bar chart ---
+    # --- 3 grafikas: Etapų vidurkių stulpelinė diagrama ---
     fig, ax = plt.subplots(figsize=(9, 5))
 
     plot_stages_with_totals = [s for s in stages if s in stage_data]
@@ -599,25 +605,25 @@ def generate_spinup_graphs(results_dir, graphs_dir):
                 bar.get_height() + 1,
                 f'{mean:.0f}s', ha='center', va='bottom', fontsize=9)
 
-    ax.set_title('Average Time per Deployment Stage')
-    ax.set_xlabel('Stage')
-    ax.set_ylabel('Average Time (seconds)')
+    ax.set_title('Vidutinis laikas kiekvienam diegimo etapui')
+    ax.set_xlabel('Etapas')
+    ax.set_ylabel('Vidutinis laikas (sekundėmis)')
     plt.xticks(rotation=15)
 
     save_fig(fig, os.path.join(graphs_dir, '04_spinup_stage_averages.png'))
 
-    print("  Scenario 4 graphs complete!")
+    print("  4 scenarijaus grafikai paruošti!")
 
 # =============================================================================
-# SCENARIO 5 - CLUSTER STARTUP GRAPHS
+# 5 SCENARIJUS - KLASTERIO PALEIDIMO GRAFIKAI
 # =============================================================================
 
 def generate_startup_graphs(results_dir, graphs_dir):
-    print("\nGenerating Scenario 5 - Cluster Startup graphs...")
+    print("\nGeneruojami 5 scenarijaus - klasterio paleidimo grafikai...")
 
     summary_file = os.path.join(results_dir, 'timing_summary.csv')
     if not os.path.exists(summary_file):
-        print("  No timing data found - skipping")
+        print("  Laiko duomenų nerasta - praleidžiama")
         return
 
     df = pd.read_csv(summary_file)
@@ -635,14 +641,14 @@ def generate_startup_graphs(results_dir, graphs_dir):
     ]
 
     milestone_labels = {
-        'api_server_ready': 'API Server',
-        'all_nodes_ready': 'Nodes Ready',
+        'api_server_ready': 'API serveris',
+        'all_nodes_ready': 'Mazgai paruošti',
         'longhorn_healthy': 'Longhorn',
         'prometheus_ready': 'Prometheus',
         'grafana_ready': 'Grafana',
-        'vms_running': 'VMs Running',
+        'vms_running': 'VM veikia',
         'vm_http_ready': 'VM HTTP',
-        'TOTAL': 'TOTAL'
+        'TOTAL': 'IŠ VISO'
     }
 
     milestone_data = {}
@@ -652,10 +658,10 @@ def generate_startup_graphs(results_dir, graphs_dir):
             milestone_data[m] = rows.tolist()
 
     if not milestone_data:
-        print("  No milestone data found - skipping")
+        print("  Etapų duomenų nerasta - praleidžiama")
         return
 
-    # --- Graph 1: Average startup timeline ---
+    # --- 1 grafikas: Vidutinis paleidimo laikas ---
     fig, ax = plt.subplots(figsize=(12, 5))
 
     plot_milestones = [m for m in milestones if m != 'TOTAL' and m in milestone_data]
@@ -674,13 +680,13 @@ def generate_startup_graphs(results_dir, graphs_dir):
         ax.text(mean + 2, bar.get_y() + bar.get_height() / 2,
                 f'{mean:.0f}s', va='center', fontsize=9)
 
-    ax.set_title('Average Cluster Startup Time per Milestone\n(from power-on)')
-    ax.set_xlabel('Time from Power-On (seconds)')
+    ax.set_title('Vidutinis klasterio paleidimo laikas pagal etapus\n(nuo įjungimo)')
+    ax.set_xlabel('Laikas nuo įjungimo (sekundėmis)')
     ax.invert_yaxis()
 
     save_fig(fig, os.path.join(graphs_dir, '05_startup_timeline.png'))
 
-    # --- Graph 2: Total startup time per run ---
+    # --- 2 grafikas: Bendras paleidimo laikas kiekvienam bandymui ---
     if 'TOTAL' in milestone_data:
         fig, ax = plt.subplots(figsize=(10, 4))
 
@@ -690,22 +696,22 @@ def generate_startup_graphs(results_dir, graphs_dir):
 
         ax.bar(runs, totals, color='#2196F3', alpha=0.7)
         ax.axhline(y=mean_val, color='red', linestyle='--',
-                   linewidth=2, label=f'Mean: {mean_val:.0f}s ({mean_val/60:.1f}min)')
+                   linewidth=2, label=f'Vidurkis: {mean_val:.0f}s ({mean_val/60:.1f} min.)')
 
-        ax.set_title('Total Cluster Startup Time per Run')
-        ax.set_xlabel('Run Number')
-        ax.set_ylabel('Startup Time (seconds)')
+        ax.set_title('Bendras klasterio paleidimo laikas kiekvienam bandymui')
+        ax.set_xlabel('Bandymo numeris')
+        ax.set_ylabel('Paleidimo laikas (sekundėmis)')
         ax.legend()
         ax.set_xticks(runs)
 
-        # Add secondary y-axis in minutes
+        # Pridėti antrinę y ašį minutėmis
         ax2 = ax.twinx()
         ax2.set_ylim(ax.get_ylim()[0] / 60, ax.get_ylim()[1] / 60)
-        ax2.set_ylabel('Startup Time (minutes)')
+        ax2.set_ylabel('Paleidimo laikas (minutėmis)')
 
         save_fig(fig, os.path.join(graphs_dir, '05_startup_total_per_run.png'))
 
-    # --- Graph 3: Pod count growth during startup ---
+    # --- 3 grafikas: Pod skaičiaus augimas paleidimo metu ---
     pod_file = os.path.join(results_dir, 'pod_count_timeseries.csv')
     if os.path.exists(pod_file):
         fig, ax = plt.subplots(figsize=(12, 4))
@@ -713,39 +719,39 @@ def generate_startup_graphs(results_dir, graphs_dir):
         df_pods['datetime'] = pd.to_datetime(df_pods['datetime'])
 
         ax.fill_between(df_pods['datetime'], df_pods['running_pods'],
-                        alpha=0.5, color='#4CAF50', label='Running')
+                        alpha=0.5, color='#4CAF50', label='Veikiantys')
         ax.fill_between(df_pods['datetime'], df_pods['pending_pods'],
-                        alpha=0.5, color='#FF9800', label='Pending')
+                        alpha=0.5, color='#FF9800', label='Laukiantys')
         ax.plot(df_pods['datetime'], df_pods['total_pods'],
-                'b-', linewidth=2, label='Total')
+                'b-', linewidth=2, label='Iš viso')
 
-        ax.set_title('Pod Count Growth During Cluster Startup')
-        ax.set_xlabel('Time')
-        ax.set_ylabel('Number of Pods')
+        ax.set_title('Pod skaičiaus augimas klasterio paleidimo metu')
+        ax.set_xlabel('Laikas')
+        ax.set_ylabel('Pod skaičius')
         ax.legend()
         plt.xticks(rotation=30)
 
         save_fig(fig, os.path.join(graphs_dir, '05_pod_count_growth.png'))
 
-    print("  Scenario 5 graphs complete!")
+    print("  5 scenarijaus grafikai paruošti!")
 
 # =============================================================================
-# MAIN
+# PAGRINDINĖ FUNKCIJA
 # =============================================================================
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Generate thesis graphs from experiment CSV results'
+        description='Generuoja bakalauriniam darbui paruoštus grafikus iš eksperimentų CSV rezultatų'
     )
     parser.add_argument('--results', required=True,
-                        help='Path to scenario results directory')
+                        help='Kelias iki scenarijaus rezultatų katalogo')
     parser.add_argument('--scenario', required=True, type=int, choices=[1, 2, 3, 4, 5],
-                        help='Scenario number (1-5)')
+                        help='Scenarijaus numeris (1-5)')
     args = parser.parse_args()
 
     results_dir = args.results
     if not os.path.exists(results_dir):
-        print(f"ERROR: Results directory not found: {results_dir}")
+        print(f"KLAIDA: Rezultatų katalogas nerastas: {results_dir}")
         sys.exit(1)
 
     graphs_dir = os.path.join(results_dir, 'graphs')
@@ -753,8 +759,8 @@ def main():
 
     setup_style()
 
-    print(f"Results directory: {results_dir}")
-    print(f"Graphs will be saved to: {graphs_dir}")
+    print(f"Rezultatų katalogas: {results_dir}")
+    print(f"Grafikai bus išsaugoti į: {graphs_dir}")
 
     generators = {
         1: generate_ha_recovery_graphs,
@@ -766,8 +772,8 @@ def main():
 
     generators[args.scenario](results_dir, graphs_dir)
 
-    print(f"\nDone! All graphs saved to: {graphs_dir}")
-    print("Files generated:")
+    print(f"\nAtlikta! Visi grafikai išsaugoti į: {graphs_dir}")
+    print("Sugeneruoti failai:")
     for f in sorted(os.listdir(graphs_dir)):
         if f.endswith('.png'):
             print(f"  {f}")
