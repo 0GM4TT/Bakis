@@ -44,8 +44,8 @@ TEST_VM_HTTP="$VM1_HTTP"
 REPETITIONS=10
 
 # Only run 300s timeout first — comment in others once 300s is validated
-EVICTION_TIMEOUTS=(300)
-# EVICTION_TIMEOUTS=(300 60 30)
+# EVICTION_TIMEOUTS=(300)
+EVICTION_TIMEOUTS=(300 60 30)
 
 # How long to wait after node recovers before next test
 STABILIZATION_WAIT=600
