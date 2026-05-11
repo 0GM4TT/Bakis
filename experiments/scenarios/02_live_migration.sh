@@ -225,6 +225,16 @@ run_migration() {
     failures=$(count_http_failures "$http_log")
     log_info "Run $run_number ($mode): duration=${migration_elapsed}s, HTTP failures=${failures}"
 
+     # Collect Kubernetes events for this run
+
+    log_info "Collecting Kubernetes events for run ${run_number}..."
+
+    kubectl get events --all-namespaces --sort-by='.lastTimestamp' -o json \
+
+        > "$results_dir/events_run${run_number}_${mode}.json" 2>/dev/null || true
+
+    log_info "Events saved to events_run${run_number}_${mode}.json"
+
     log_info "Waiting ${BETWEEN_RUNS_WAIT}s before next run..."
     sleep "$BETWEEN_RUNS_WAIT"
 
