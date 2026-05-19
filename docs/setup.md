@@ -145,12 +145,12 @@ k3s-worker1 ansible_host=192.168.1.160   # ← your worker1 IP
 k3s-worker2 ansible_host=192.168.1.103   # ← your worker2 IP
 
 [cluster:vars]
-ansible_user=msm                          # ← your Pi username
+ansible_user=bakalauras                          # ← your Pi username
 ```
 
 **`ansible.cfg`** — Pi username:
 ```ini
-remote_user = msm    # ← your Pi username
+remote_user = bakalauras    # ← your Pi username
 ```
 
 **`playbooks/04_monitoring.yml`** — Grafana password:
