@@ -956,7 +956,7 @@ cd ~/pi-cluster-k3s/experiments/scenarios
 ```bash
 kubectl get pods -n monitoring   # check all Running
 kubectl get svc -n monitoring | grep 30091   # check NodePort exists
-curl -s http://192.168.50.200:30091/-/healthy   # should return "Prometheus Server is Healthy."
+curl -s http://192.168.1.155:30091/-/healthy   # should return "Prometheus Server is Healthy."
 ```
 
 ### "virtctl not found"
@@ -999,9 +999,9 @@ kubectl get vmi -o wide   # both should show worker nodes
 
 The scenario script installs it automatically. If it fails, install manually:
 ```bash
-ssh -i ~/.ssh/ansible_id -p 30001 ubuntu@192.168.50.200 \
+ssh -i ~/.ssh/ansible_id -p 30001 ubuntu@192.168.1.155 \
   "sudo apt-get install -y stress-ng"
-ssh -i ~/.ssh/ansible_id -p 30002 ubuntu@192.168.50.200 \
+ssh -i ~/.ssh/ansible_id -p 30002 ubuntu@192.168.1.155 \
   "sudo apt-get install -y stress-ng"
 ```
 
