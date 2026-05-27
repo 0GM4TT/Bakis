@@ -19,11 +19,11 @@ The cluster runs Ubuntu VMs inside Kubernetes pods, supports live VM migration b
               │ Ethernet (Bridged networking)
               │
 ┌─────────────▼───────────────────────────────────────────────────┐
-│  Home Network (192.168.50.x)                                    │
+│  Home Network (192.168.1.x)                                    │
 │                                                                 │
 │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐  │
 │  │  k3s-master      │  │  k3s-worker1     │  │  k3s-worker2 │  │
-│  │  .200            │  │  .201            │  │  .202        │  │
+│  │  .155            │  │  .160            │  │  .103        │  │
 │  │                  │  │                  │  │              │  │
 │  │  k3s control     │  │  KubeVirt        │  │  KubeVirt    │  │
 │  │  Prometheus      │  │  ubuntu-vm-2     │  │  ubuntu-vm-1 │  │
@@ -67,9 +67,9 @@ The cluster runs Ubuntu VMs inside Kubernetes pods, supports live VM migration b
 #    See docs/setup.md Section 4 for full instructions
 
 # 2. Set static IPs on each Pi
-#    k3s-master  → 192.168.50.200
-#    k3s-worker1 → 192.168.50.201
-#    k3s-worker2 → 192.168.50.202
+#    k3s-master  → 192.168.1.155
+#    k3s-worker1 → 192.168.1.160
+#    k3s-worker2 → 192.168.1.103
 #    See docs/setup.md Section 5
 
 # 3. Create a CentOS jumphost VM in Bridged networking mode
@@ -102,17 +102,17 @@ bash show_cluster_info.sh
 
 ## Access Points
 
-Once deployed, the cluster is accessible at these URLs (replace `192.168.50.200` if you used a different IP):
+Once deployed, the cluster is accessible at these URLs (replace `192.168.1.155` if you used a different IP):
 
 | Service | URL | Login |
 |---------|-----|-------|
-| Grafana | http://192.168.50.200:32000 | admin / your password |
-| Longhorn | http://192.168.50.200:30090 | none |
-| Prometheus | http://192.168.50.200:30091 | none |
-| VM1 web | http://192.168.50.200:30011 | none |
-| VM2 web | http://192.168.50.200:30012 | none |
-| VM1 SSH | `ssh -i ~/.ssh/ansible_id -p 30001 ubuntu@192.168.50.200` | ubuntu / ubuntu123 |
-| VM2 SSH | `ssh -i ~/.ssh/ansible_id -p 30002 ubuntu@192.168.50.200` | ubuntu / ubuntu123 |
+| Grafana | http://192.168.1.155:32000 | admin / your password |
+| Longhorn | http://192.168.1.155:30090 | none |
+| Prometheus | http://192.168.1.155:30091 | none |
+| VM1 web | http://192.168.1.155:30011 | none |
+| VM2 web | http://192.168.1.155:30012 | none |
+| VM1 SSH | `ssh -i ~/.ssh/ansible_id -p 30001 ubuntu@192.168.1.155` | ubuntu / ubuntu123 |
+| VM2 SSH | `ssh -i ~/.ssh/ansible_id -p 30002 ubuntu@192.168.1.155` | ubuntu / ubuntu123 |
 
 ---
 
